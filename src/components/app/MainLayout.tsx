@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useEffect, useMemo } from 'react';
 import { ErrorBoundary } from 'react-error-boundary';
 import { useTranslation } from 'react-i18next';
 
@@ -19,9 +19,13 @@ import RecordNotFound from '@/components/error/RecordNotFound';
 import SomethingError from '@/components/error/SomethingError';
 import { INLINE_COMMENT_DRAWER_WIDTH, useInlineCommentPanel } from '@/components/inline-comment/InlineCommentContext';
 import { InlineCommentSidebar } from '@/components/inline-comment/InlineCommentSidebar';
+import { useNarrowViewport } from '@/utils/viewport';
 
 function MainLayoutContent() {
   const { drawerOpened, drawerWidth, setDrawerWidth, toggleOpenDrawer } = useOutlineDrawer();
+  const narrow = useNarrowViewport();
+  // Wide screens push the page aside for the sidebar; phones cover it instead (overlay + backdrop).
+  const pushesContent = drawerOpened && !narrow;
   const aiChatContext = useAIChatContextOptional();
   const chatViewDrawerOpen = aiChatContext?.drawerOpen ?? false;
   const openViewDrawerWidth = aiChatContext?.drawerWidth ?? 0;
@@ -46,10 +50,16 @@ function MainLayoutContent() {
     return notFound ? <RecordNotFound isViewNotFound viewId={viewId} /> : <Main />;
   }, [deleted, noAccess, notFound, t, viewId]);
 
+  // After picking a page on a phone, get the sidebar out of the way.
+  useEffect(() => {
+    if (narrow) toggleOpenDrawer(false);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [viewId, narrow]);
+
   const contentOffset = useMemo(() => {
     let diff = 0;
 
-    if (drawerOpened) {
+    if (pushesContent) {
       diff = drawerWidth;
     }
 
@@ -62,13 +72,13 @@ function MainLayoutContent() {
     }
 
     return diff;
-  }, [chatViewDrawerOpen, drawerOpened, drawerWidth, isPanelOpen, openViewDrawerWidth]);
+  }, [chatViewDrawerOpen, drawerWidth, isPanelOpen, openViewDrawerWidth, pushesContent]);
 
   return (
     <div className={'h-screen w-screen'}>
       <GoogleCalendarIntegration />
       <RowPeekLayout
-        leftOffset={drawerOpened ? drawerWidth : 0}
+        leftOffset={pushesContent ? drawerWidth : 0}
         rightOffset={(chatViewDrawerOpen ? openViewDrawerWidth : 0) + (isPanelOpen ? INLINE_COMMENT_DRAWER_WIDTH : 0)}
         disabled={!!openPageModalViewId}
       >
@@ -76,7 +86,7 @@ function MainLayoutContent() {
           overflowXHidden
           overflowYHidden={false}
           style={{
-            transform: drawerOpened ? `translateX(${drawerWidth}px)` : 'none',
+            transform: pushesContent ? `translateX(${drawerWidth}px)` : 'none',
             width: `calc(100% - ${contentOffset}px)`,
             transition: 'width 0.2s ease-in-out, transform 0.2s ease-in-out',
           }}
@@ -111,6 +121,14 @@ function MainLayoutContent() {
 
           <ErrorBoundary FallbackComponent={SomethingError}>{main}</ErrorBoundary>
         </AFScroller>
+        {narrow && drawerOpened && (
+          <div
+            data-testid={'sidebar-backdrop'}
+            aria-hidden={'true'}
+            className={'fixed inset-0 z-[140] bg-black/40'}
+            onClick={() => toggleOpenDrawer(false)}
+          />
+        )}
         <SideBar
           onResizeDrawerWidth={setDrawerWidth}
           drawerWidth={drawerWidth}

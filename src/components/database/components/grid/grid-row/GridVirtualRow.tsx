@@ -8,6 +8,7 @@ import { memo, useEffect, useMemo, useRef, useState } from 'react';
 import { useReadOnly, useSortsSelector } from '@/application/database-yjs';
 import { DropRowIndicator } from '@/components/database/components/drag-and-drop/DropRowIndicator';
 import { HoverControls } from '@/components/database/components/grid/controls/HoverControls';
+import { RowSelectCheckbox } from '@/components/database/components/grid/controls/RowSelectCheckbox';
 import {
   GridDragState,
   ItemState,
@@ -23,6 +24,7 @@ import {
   useGridContext,
   useGridInteractionActions,
   useIsGridRowActive,
+  useIsGridRowSelected,
 } from '@/components/database/grid/useGridContext';
 import { cn } from '@/lib/utils';
 
@@ -54,6 +56,7 @@ function GridVirtualRow({
   const { isGrouped } = useGridContext();
   const { setHoverRowKey } = useGridInteractionActions();
   const hasActiveCell = useIsGridRowActive(rowKey);
+  const isSelected = useIsGridRowSelected(rowId);
   const innerRef = useRef<HTMLDivElement>(null);
   const dragHandleRef = useRef<HTMLDivElement | null>(null);
   const [state, setState] = useState<ItemState>(idleState);
@@ -160,9 +163,10 @@ function GridVirtualRow({
         onMouseMove={() => setHoverRowKey(rowKey)}
         onMouseLeave={() => setHoverRowKey(undefined)}
         ref={innerRef}
-        className={cn('relative flex')}
+        className={cn('relative flex', isSelected && 'bg-fill-theme-select')}
       >
-        <div style={{ width: `${before}px` }}>
+        <div className='relative' style={{ width: `${before}px` }}>
+          {isRegularRow && !readOnly && before >= 88 && <RowSelectCheckbox rowId={rowId} rowKey={rowKey} />}
           {isRegularRow && !readOnly && (
             <HoverControls
               state={state}

@@ -1,5 +1,7 @@
 import { ReactComponent as ToggleListIcon } from '@/assets/icons/toggle_list.svg';
 
+import { useTranslation } from 'react-i18next';
+
 function OutlineIcon({
   isExpanded,
   setIsExpanded,
@@ -9,10 +11,15 @@ function OutlineIcon({
   setIsExpanded: (isExpanded: boolean) => void;
   level: number;
 }) {
+  const { t } = useTranslation();
+
   if (isExpanded) {
     return (
       <button
         data-testid="outline-toggle-collapse"
+        type="button"
+        aria-label={t('sideBar.collapsePage', { defaultValue: 'Collapse' })}
+        aria-expanded={true}
         style={{
           paddingLeft: 1.125 * level + 'em',
         }}
@@ -30,6 +37,9 @@ function OutlineIcon({
   return (
     <button
       data-testid="outline-toggle-expand"
+      type="button"
+      aria-label={t('sideBar.expandPage', { defaultValue: 'Expand' })}
+      aria-expanded={false}
       style={{
         paddingLeft: 1.125 * level + 'em',
       }}

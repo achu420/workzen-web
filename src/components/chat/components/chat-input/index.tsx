@@ -46,7 +46,7 @@ export function ChatInput() {
   } = useMessagesHandlerContext();
   const { responseFormat, responseMode, setResponseFormat, setResponseMode } = useResponseFormatContext();
   const { openModal, currentPromptId, updateCurrentPromptId, reloadDatabasePrompts } = usePromptModal();
-  const { chatId } = useChatContext();
+  const { chatId, scope } = useChatContext();
 
   const webSearchEnabled = chatSettings?.web_search_enabled ?? false;
 
@@ -207,29 +207,33 @@ export function ChatInput() {
 
         <div className={'flex items-center justify-between gap-4'}>
           <div className={'flex items-center gap-1'}>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  onMouseDown={(e) => {
-                    e.preventDefault();
-                  }}
-                  variant={'ghost'}
-                  size={'icon'}
-                  data-testid='chat-input-format-toggle'
-                  onClick={() => {
-                    setResponseMode(
-                      responseMode === ChatInputMode.FormatResponse ? ChatInputMode.Auto : ChatInputMode.FormatResponse
-                    );
-                  }}
-                >
-                  <FormatIcon className='h-5 w-5 text-icon-secondary' />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>{formatTooltip}</TooltipContent>
-            </Tooltip>
+            {!scope && (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    onMouseDown={(e) => {
+                      e.preventDefault();
+                    }}
+                    variant={'ghost'}
+                    size={'icon'}
+                    data-testid='chat-input-format-toggle'
+                    onClick={() => {
+                      setResponseMode(
+                        responseMode === ChatInputMode.FormatResponse ? ChatInputMode.Auto : ChatInputMode.FormatResponse
+                      );
+                    }}
+                  >
+                    <FormatIcon className='h-5 w-5 text-icon-secondary' />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>{formatTooltip}</TooltipContent>
+              </Tooltip>
+            )}
 
             <ModelSelector className={'h-7'} disabled={disabled || answerApplying} />
 
+            {!scope && (
+              <>
             <Tooltip>
               <TooltipTrigger asChild>
                 <Button
@@ -280,12 +284,15 @@ export function ChatInput() {
                 }, 200);
               }}
             />
+              </>
+            )}
           </div>
 
           <div className={'flex items-center gap-2'}>
-            <RelatedViews />
+            {!scope && <RelatedViews />}
             {answerApplying ? (
               <Button
+                aria-label={t('chat.input.stop', { defaultValue: 'Stop generating' })}
                 onClick={cancelAnswerStream}
                 size={'icon'}
                 variant={'link'}
@@ -300,6 +307,7 @@ export function ChatInput() {
                 variant={'link'}
                 className={'p-0 text-fill-theme-thick'}
                 disabled={!message.trim() || disabled}
+                aria-label={t('chat.input.send', { defaultValue: 'Send message' })}
                 data-testid='chat-input-send'
               >
                 {questionSending ? <LoadingDots /> : <SendIcon className='h-7 w-7' />}

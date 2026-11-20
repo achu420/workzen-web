@@ -4,7 +4,7 @@ import { ErrorBoundary } from 'react-error-boundary';
 import { getPublicFormSchema, type PublicFormAPIError } from '@/application/services/js-services/http/form-api';
 import { beginPublicFormAuthentication } from '@/application/session/public_form_auth';
 import { PublicFormResponse, PublicFormSchema } from '@/application/types/form';
-import { ReactComponent as AppFlowyLogo } from '@/assets/icons/logo.svg';
+import { ReactComponent as AppFlowyLogo } from '@/assets/icons/workzen-symbol.svg';
 import { FullScreenLoading } from '@/components/_shared/FullScreenLoading';
 import { Button } from '@/components/ui/button';
 

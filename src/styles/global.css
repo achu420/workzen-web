@@ -3,9 +3,12 @@
 
 @import "./variables/semantic.light.css";
 @import "./variables/semantic.dark.css";
+@import "./accessible-contrast.css";
 @import "./template.css";
 
 :root {
+    /* Native scrollbars (any plain overflow container) follow the theme instead of staying light. */
+    color-scheme: light;
     --shadow-color: rgba(31, 35, 41, 0.10);
     /* new shadow */
     --custom-shadow-sm: 0px 4px 20px 0px var(--shadow-color);
@@ -13,6 +16,7 @@
 }
 
 :root[data-dark-mode=true] {
+    color-scheme: dark;
     --shadow-color: rgba(0, 0, 0, 0.10);
     /* new shadow */
     --custom-shadow-sm: 0px 2px 16px 0px var(--shadow-color);

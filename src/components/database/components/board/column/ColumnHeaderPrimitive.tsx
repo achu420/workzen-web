@@ -64,7 +64,7 @@ function ColumnHeaderPrimitive(
             hideEnabled={hideEnabled}
             getCards={getCards}
           >
-            <Button variant={'ghost'} size={'icon-sm'} className={'text-icon-secondary'}>
+            <Button variant={'ghost'} size={'icon-sm'} aria-label={t('menuAppHeader.moreButtonToolTip')} className={'text-icon-secondary'}>
               <MoreIcon className={'h-5 w-5'} />
             </Button>
           </ColumnMenu>

@@ -1,5 +1,5 @@
 import dayjs from 'dayjs';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
 
@@ -48,13 +48,13 @@ import { SearchInput } from '@/components/ui/search-input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { cn } from '@/lib/utils';
 import { getErrorMessage, isAPIErrorCode } from '@/utils/errors';
+import { getServerInfoSnapshot, subscribeToServerInfo } from '@/utils/server-info';
 
 import type { TFunction } from 'i18next';
 
 type PeopleTab = 'members' | 'groups';
 type GroupDetailTab = 'general' | 'members';
 const GROUP_EXCLUDED_WORKSPACE_ROLES = [Role.Guest];
-const PEOPLE_GUIDE_URL = 'https://appflowy.com/guide/getting-started-with-appflowy';
 const SCIM_GROUP_SOURCE = 'scim';
 const MEMBERS_TABLE_GRID_COLUMNS = 'grid-cols-[minmax(0,2fr)_minmax(120px,1fr)_minmax(0,2fr)_32px]';
 const PEOPLE_TABLE_HEADER_CLASS_NAME =
@@ -198,7 +198,10 @@ function MembersPanelForWorkspace({
   const isOwner = currentWorkspace?.role === Role.Owner || isSameUserUid(currentWorkspace?.owner?.uid, currentUser?.uid);
   // The list endpoint exposes summaries to Members, but group rosters and all
   // mutations remain Owner-only.
-  const canViewGroups = isOwner || currentWorkspace?.role === Role.Member;
+  const serverInfo = useSyncExternalStore(subscribeToServerInfo, () => getServerInfoSnapshot());
+  // Servers without groups say so, and then there is nothing to show or load.
+  const groupsSupported = !(serverInfo.status === 'available' && serverInfo.info?.enable_workspace_groups === false);
+  const canViewGroups = groupsSupported && (isOwner || currentWorkspace?.role === Role.Member);
   const groupGridColumns = isOwner
     ? 'grid-cols-[minmax(0,2fr)_minmax(120px,1fr)_32px_32px]'
     : 'grid-cols-[minmax(0,2fr)_minmax(120px,1fr)]';
@@ -506,14 +509,6 @@ function MembersPanelForWorkspace({
         <h2 className='text-2xl font-semibold leading-8 text-text-primary'>{t('settings.appearance.people.title')}</h2>
         <div className='mt-1 flex items-center gap-3 text-xs leading-[18px] text-text-secondary'>
           <span>{t('settings.appearance.people.description')}</span>
-          <a
-            href={PEOPLE_GUIDE_URL}
-            target='_blank'
-            rel='noreferrer'
-            className='rounded-100 text-text-action hover:text-text-action-hover focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-border-theme-thick'
-          >
-            {t('workspace.learnMore')}
-          </a>
         </div>
       </div>
 
@@ -559,12 +554,12 @@ function MembersPanelForWorkspace({
                 >
                   {tabLabel(t('settings.appearance.people.membersTab'), members.length)}
                 </TabsTrigger>
-                <TabsTrigger
+                {groupsSupported && <TabsTrigger
                   value='groups'
                   className='h-8 min-w-0 items-center rounded-300 px-3 py-1.5 text-sm font-medium text-text-secondary focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-border-theme-thick data-[state=active]:bg-fill-content-hover data-[state=active]:text-text-primary data-[state=active]:after:hidden'
                 >
                   {tabLabel(t('settings.appearance.people.groupsTab'), groups.length)}
-                </TabsTrigger>
+                </TabsTrigger>}
               </TabsList>
             </div>
 

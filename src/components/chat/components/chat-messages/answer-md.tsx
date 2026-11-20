@@ -6,6 +6,7 @@ import { Alert, AlertDescription } from '@/components/chat/components/ui/alert';
 import { useEditorContext } from '@/components/chat/provider/editor-provider';
 
 import { resolveCitationMarkdown } from './citation-markdown';
+
 import type { ResolvedMessageSource } from './message-sources';
 
 const EMPTY_RESOLVED_SOURCES: ResolvedMessageSource[] = [];

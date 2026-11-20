@@ -25,7 +25,7 @@ import { ChatContext, useChatContext } from './context';
 // Component to bridge ModelSelector with MessagesHandler
 function ChatContentWithModelSync({ currentUser, selectionMode }: { currentUser?: User; selectionMode?: boolean }) {
   const { chatSettings, selectedModelName, setSelectedModelName, updateChatSettings } = useMessagesHandlerContext();
-  const { requestInstance, chatId } = useChatContext();
+  const { requestInstance, chatId, compact } = useChatContext();
   const savedModelRef = useRef<string>();
 
   savedModelRef.current = chatSettings?.metadata?.ai_model as string | undefined;
@@ -57,7 +57,7 @@ function ChatContentWithModelSync({ currentUser, selectionMode }: { currentUser?
     <ModelSelectorContext.Provider value={modelSelectorValue}>
       <div className={'relative flex h-full w-full flex-col'}>
         <ChatMessages currentUser={currentUser} />
-        <motion.div layout className={cn('relative flex w-full justify-center pb-6 max-sm:hidden')}>
+        <motion.div layout className={cn('relative flex w-full justify-center max-sm:hidden', compact ? 'pb-2' : 'pb-6')}>
           <AnimatePresence mode='wait'>{!selectionMode && <ChatInput />}</AnimatePresence>
         </motion.div>
       </div>
@@ -67,6 +67,8 @@ function ChatContentWithModelSync({ currentUser, selectionMode }: { currentUser?
 
 function Main(props: ChatProps) {
   const {
+    scope,
+    compact,
     workspaceId,
     chatId,
     requestInstance,
@@ -82,6 +84,8 @@ function Main(props: ChatProps) {
   } = props;
   const chatContextValue = useMemo<ChatProps>(
     () => ({
+      scope,
+      compact,
       workspaceId,
       chatId,
       requestInstance,
@@ -96,6 +100,8 @@ function Main(props: ChatProps) {
       testDatabasePromptConfig,
     }),
     [
+      scope,
+      compact,
       workspaceId,
       chatId,
       requestInstance,

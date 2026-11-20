@@ -252,7 +252,13 @@ function MoreActions({
     <>
       <DropdownMenu open={open} onOpenChange={setOpen}>
         <DropdownMenuTrigger asChild>
-          <Button data-testid='page-more-actions' size={'icon'} variant={'ghost'} className={'text-icon-secondary'}>
+          <Button
+            data-testid='page-more-actions'
+            aria-label={t('menuAppHeader.moreButtonToolTip')}
+            size={'icon'}
+            variant={'ghost'}
+            className={'text-icon-secondary'}
+          >
             <MoreIcon />
           </Button>
         </DropdownMenuTrigger>

@@ -152,30 +152,34 @@ export function ViewMetaPreview({
   const ref = React.useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    const el = ref.current;
-    const handleMouseEnter = () => {
-      setIsHover(true);
+    // This region (icon/cover prompt + title) is pointer-events-none so it
+    // never blocks a database view's own controls (e.g. a Board's "add card
+    // at top" button) that can render at the same vertical offset -- its
+    // bounding box genuinely overlaps such controls, not just visually, so
+    // native mouseenter/mouseleave (which require pointer-events to fire at
+    // all) can no longer be used here. Hover is instead tracked by checking
+    // the pointer's position against this element's own rect on every
+    // document-level move -- same visible show/hide behavior, but clicks
+    // on anything actually underneath still reach it.
+    const handlePointerMove = (event: PointerEvent) => {
+      const el = ref.current;
+      if (!el) return;
+      const rect = el.getBoundingClientRect();
+      const inside =
+        event.clientX >= rect.left && event.clientX <= rect.right &&
+        event.clientY >= rect.top && event.clientY <= rect.bottom;
+
+      setIsHover(inside);
     };
 
-    const handleMouseLeave = () => {
-      setIsHover(false);
-    };
-
-    if (el) {
-      el.addEventListener('mouseenter', handleMouseEnter);
-      el.addEventListener('mouseleave', handleMouseLeave);
-    }
-
+    document.addEventListener('pointermove', handlePointerMove);
     return () => {
-      if (el) {
-        el.removeEventListener('mouseenter', handleMouseEnter);
-        el.removeEventListener('mouseleave', handleMouseLeave);
-      }
+      document.removeEventListener('pointermove', handlePointerMove);
     };
   }, []);
 
   return (
-    <div data-view-meta-preview className={'flex w-full flex-col items-center'}>
+    <div data-view-meta-preview className={'pointer-events-none flex w-full flex-col items-center'}>
       {cover && (
         <ViewCover
           onUpdateCover={handleUpdateCover}
@@ -187,12 +191,20 @@ export function ViewMetaPreview({
           coverOffset={cover?.offset}
         />
       )}
-      <div ref={ref} data-testid='view-meta-hover-area' className={'relative flex w-full flex-col overflow-hidden'}>
+      <div ref={ref} data-testid='view-meta-hover-area' className={'pointer-events-none relative flex w-full flex-col overflow-hidden'}>
+        {/* This strip reserves layout space for the Add-icon/Add-cover
+            buttons but renders empty (buttons hidden via `visibility`, not
+            unmounted) whenever isHover is false -- without pointer-events-
+            none it still blocks clicks on whatever a database view (e.g.
+            the Board's "add card at top" button) positions at this same
+            vertical offset, even while empty. Hover detection stays on the
+            ref'd parent above, so this is safe; AddIconCover opts its own
+            buttons back in with pointer-events-auto. */}
         <div
           style={{
             height: layout === ViewLayout.Document ? '40px' : '32px',
           }}
-          className={'relative flex w-full justify-center max-sm:h-[32px]'}
+          className={'relative flex w-full justify-center pointer-events-none max-sm:h-[32px]'}
         >
           {!readOnly && (
             <Suspense>
@@ -218,7 +230,11 @@ export function ViewMetaPreview({
           style={{
             marginBottom: layout === ViewLayout.Document ? '24px' : '16px',
           }}
-          className={`relative flex w-full items-center justify-center overflow-visible`}
+          // Opts back in despite the parent's pointer-events-none (see
+          // above) -- the title itself (icon popover + editable name) must
+          // stay clickable; only the surrounding empty reserved space
+          // should let clicks fall through to content underneath.
+          className={`pointer-events-auto relative flex w-full items-center justify-center overflow-visible`}
         >
           <h1
             style={{

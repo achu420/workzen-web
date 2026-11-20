@@ -44,14 +44,7 @@ export const UnSupportedBlockDev = forwardRef<HTMLDivElement, EditorElementProps
 
         <div className={'my-4 whitespace-pre font-medium'}>
           {`We're sorry for inconvenience \n`}
-          Submit an issue on our{' '}
-          <a
-            className={'text-text-action underline'}
-            href={'https://github.com/AppFlowy-IO/AppFlowy/issues/new?template=bug_report.yaml'}
-          >
-            Github
-          </a>{' '}
-          page that describes your error
+          Please tell your workspace administrator what went wrong
         </div>
 
         <span className={'text-sm'}>

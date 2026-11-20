@@ -11,6 +11,7 @@ import {
   ORIGINAL_DATABASE_RESTORE_ID,
   readPersistedDatabaseSource,
   remoteDatabaseCoversSource,
+  restoreStateMatches,
   waitForDatabaseViewSource,
 } from '@/application/database-yjs/creation/source-readiness';
 import { Types, YDoc, YjsDatabaseKey, YjsEditorKey } from '@/application/types';
@@ -144,6 +145,14 @@ describe('Database view source readiness', () => {
     const doc = database();
 
     expect(() => remoteDatabaseCoversSource(requirements(doc), { ...response(doc), ...change })).toThrow();
+  });
+
+  it('accepts any reported collabVersion when the local doc never adopted one yet', () => {
+    const doc = database();
+    const unversioned = { ...requirements(doc), version: undefined };
+
+    expect(remoteDatabaseCoversSource(unversioned, response(doc))).toBe(true);
+    expect(remoteDatabaseCoversSource(unversioned, { ...response(doc), collabVersion: 'some-other-generation' })).toBe(true);
   });
 
   it('does not accept a proof after owner retirement or deadline expiry', async () => {
@@ -289,5 +298,25 @@ describe('Database view source readiness', () => {
       open.mockRestore();
       live.destroy();
     }
+  });
+});
+
+describe('restoreStateMatches', () => {
+  const state = { database_restore_id: null, version: 'appflowy-database-v1' };
+
+  it('accepts a server version when the local doc never adopted one', () => {
+    expect(restoreStateMatches(state, { restoreId: ORIGINAL_DATABASE_RESTORE_ID, version: undefined })).toBe(true);
+    expect(restoreStateMatches(state, { restoreId: ORIGINAL_DATABASE_RESTORE_ID, version: null })).toBe(true);
+  });
+
+  it('accepts an identical known version and rejects a different one', () => {
+    expect(restoreStateMatches(state, { restoreId: ORIGINAL_DATABASE_RESTORE_ID, version: 'appflowy-database-v1' })).toBe(true);
+    expect(restoreStateMatches(state, { restoreId: ORIGINAL_DATABASE_RESTORE_ID, version: 'older' })).toBe(false);
+  });
+
+  it('treats a null restore id as the original generation and rejects any other generation', () => {
+    expect(restoreStateMatches({ database_restore_id: null, version: null }, { restoreId: ORIGINAL_DATABASE_RESTORE_ID })).toBe(true);
+    expect(restoreStateMatches({ database_restore_id: 'restore-2', version: null }, { restoreId: ORIGINAL_DATABASE_RESTORE_ID })).toBe(false);
+    expect(restoreStateMatches({ database_restore_id: 'restore-2', version: null }, { restoreId: 'restore-2' })).toBe(true);
   });
 });

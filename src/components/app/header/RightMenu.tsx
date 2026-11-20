@@ -7,13 +7,12 @@ import { useDatabasePageSelection } from '@/application/database-yjs/database-pa
 import { ensureRowDocumentView, syncRowDocumentViewName } from '@/application/row-document/lifecycle';
 import { useActiveRowPage } from '@/application/row-document/row-page-state';
 import { isDatabaseContainer, isDatabaseLayout, resolveActiveDatabaseViewId } from '@/application/view-utils';
-import { ReactComponent as Logo } from '@/assets/icons/logo.svg';
+import { ReactComponent as Logo } from '@/assets/icons/workzen-symbol.svg';
 import { findView } from '@/components/_shared/outline/utils';
 import { useAppOutline, useAppView, useAppViewId, useCurrentWorkspaceId } from '@/components/app/app.hooks';
 import { DATABASE_TAB_VIEW_ID_QUERY_PARAM } from '@/components/app/hooks/resolveSidebarSelectedViewId';
 import { useContainerVisibleViewIds } from '@/components/database/hooks/visibleViewIds/useContainerVisibleViewIds';
 import { InlineCommentToggleButton } from '@/components/inline-comment/InlineCommentToggleButton';
-import { openOrDownload } from '@/utils/open_schema';
 
 import ShareButton from 'src/components/app/share/ShareButton';
 
@@ -94,8 +93,8 @@ function RightMenu() {
       {actionViewId && <MoreActions viewId={actionViewId} activeViewId={activeViewId} rowId={rowPageRowId} />}
 
       <Divider orientation={'vertical'} className={'mx-2'} flexItem />
-      <Tooltip title={t('publish.downloadApp')}>
-        <button onClick={() => openOrDownload()}>
+      <Tooltip title={t('appName')}>
+        <button onClick={() => window.open('/app', '_self')}>
           <Logo className={'h-6 w-6'} />
         </button>
       </Tooltip>

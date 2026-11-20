@@ -4,13 +4,13 @@ import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 
 import { UIVariant } from '@/application/types';
-import { ReactComponent as AppFlowyLogo } from '@/assets/icons/appflowy.svg';
 import { ReactComponent as DoubleArrowLeft } from '@/assets/icons/double_arrow_left.svg';
+import { ReactComponent as AppFlowyLogo } from '@/assets/icons/workzen-logo.svg';
 import Resizer from '@/components/_shared/outline/Resizer';
 import { AFScroller } from '@/components/_shared/scroller';
 import { createHotKeyLabel, HOT_KEY_NAME } from '@/utils/hotkeys';
+import { useNarrowViewport } from '@/utils/viewport';
 
-import AppFlowyPower from '../appflowy-power/AppFlowyPower';
 
 export function OutlineDrawer({
   onScroll,
@@ -37,19 +37,23 @@ export function OutlineDrawer({
 
   const [hovered, setHovered] = useState<boolean>(false);
   const navigate = useNavigate();
+  const narrow = useNarrowViewport();
+  // On a phone the sidebar covers the page (with a backdrop, see MainLayout) instead of pushing it aside.
+  const paperWidth = narrow ? 'min(88vw, 320px)' : width;
 
   return (
     <Drawer
+      data-testid={'sidebar-drawer'}
       sx={{
-        width,
+        width: paperWidth,
         flexShrink: 0,
         boxShadow: 'var(--shadow)',
         '& .MuiDrawer-paper': {
-          width,
+          width: paperWidth,
           boxSizing: 'border-box',
           borderColor: 'var(--border-primary)',
-          boxShadow: 'none',
-          zIndex: 50,
+          boxShadow: narrow ? 'var(--shadow)' : 'none',
+          zIndex: narrow ? 150 : 50,
         },
       }}
       variant='persistent'
@@ -99,8 +103,8 @@ export function OutlineDrawer({
             <div
               className={'overflow-hidden transition-all duration-200 ease-in-out'}
               style={{
-                width: hovered ? 32 : 0,
-                opacity: hovered ? 1 : 0,
+                width: hovered || narrow ? 32 : 0,
+                opacity: hovered || narrow ? 1 : 0,
               }}
             >
               <Tooltip
@@ -114,6 +118,7 @@ export function OutlineDrawer({
                 <IconButton
                   onClick={onClose}
                   size={'small'}
+                  aria-label={t('sideBar.closeSidebar')}
                 >
                   <DoubleArrowLeft className={'text-text-secondary'} />
                 </IconButton>
@@ -122,9 +127,8 @@ export function OutlineDrawer({
           </div>
         </div>
         <div className={'flex h-fit flex-1 flex-col'}>{children}</div>
-        {variant === 'publish' && <AppFlowyPower width={width} />}
       </AFScroller>
-      <Resizer drawerWidth={width} onResize={onResizeWidth} />
+      {narrow ? null : <Resizer drawerWidth={width} onResize={onResizeWidth} />}
     </Drawer>
   );
 }

@@ -13,6 +13,7 @@ const mockInviteGuestProps = jest.fn();
 const mockPeopleWithAccessProps = jest.fn();
 const mockGeneralAccessProps = jest.fn();
 let mockIsHosted = false;
+let mockServerInfo: { status: string; info?: { enable_page_sharing?: boolean } } = { status: 'available' };
 let mockWorkspaceRole: Role | undefined = Role.Member;
 let mockWorkspaceOwnerUid: string | number = '101';
 let mockCurrentUserUid: string | number = '202';
@@ -33,7 +34,7 @@ jest.mock('@/components/app/app-overlay/AppOverlayContext', () => ({
 jest.mock('@/components/app/hooks/useServerInfo', () => ({
   useIsOfficialHosted: () => mockIsHosted,
   useServerHostingMode: () => (mockIsHosted ? 'cloud' : 'self-hosted'),
-  useServerInfoState: () => ({ status: 'available' }),
+  useServerInfoState: () => mockServerInfo,
 }));
 
 jest.mock('@/components/app/app.hooks', () => ({
@@ -124,10 +125,28 @@ describe('SharePanel', () => {
     mockPeopleWithAccessProps.mockClear();
     mockGeneralAccessProps.mockClear();
     mockIsHosted = false;
+    mockServerInfo = { status: 'available' };
     mockWorkspaceRole = Role.Member;
     mockWorkspaceOwnerUid = '101';
     mockCurrentUserUid = '202';
     mockAuthenticatedUserId = undefined;
+  });
+
+  it('on a server without page sharing, lists who has access but offers no invites or permission changes', () => {
+    mockServerInfo = { status: 'available', info: { enable_page_sharing: false } };
+    renderSharePanel(AccessLevel.FullAccess, jest.fn(), true);
+
+    expect(screen.queryByTestId('invite-guest')).toBeNull();
+    expect(screen.getByTestId('people-with-access')).toBeTruthy();
+    expect(mockPeopleWithAccessProps.mock.calls.at(-1)?.[0]).toMatchObject({ disablePersonAccessChanges: true });
+    expect(mockLoadMentionableUsers).not.toHaveBeenCalled();
+  });
+
+  it('keeps invites on servers that do not turn page sharing off', () => {
+    mockServerInfo = { status: 'available', info: { enable_page_sharing: true } };
+    renderSharePanel(AccessLevel.FullAccess, jest.fn(), true);
+
+    expect(screen.getByTestId('invite-guest')).toBeTruthy();
   });
 
   it('hides invite controls for read-only users while keeping the access list visible', () => {

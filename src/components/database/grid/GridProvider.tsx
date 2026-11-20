@@ -2,18 +2,21 @@ import { type ReactNode, useCallback, useEffect, useLayoutEffect, useMemo, useRe
 
 import { useDatabaseContext } from '@/application/database-yjs';
 import type { GridGrouping } from '@/application/database-yjs';
+import GridSelectionBar from '@/components/database/components/grid/controls/GridSelectionBar';
 import {
   EMBEDDED_GRID_INITIAL_ROW_LIMIT,
   EMBEDDED_GRID_LOAD_MORE_INCREMENT,
   useRenderRows,
-} from '@/components/database/components/grid/grid-row';
+ RenderRowType } from '@/components/database/components/grid/grid-row';
 import type { RenderRow } from '@/components/database/components/grid/grid-row';
 import { useDatabaseHistoryScopeContext } from '@/components/database/DatabaseHistoryScope';
 import { useDatabaseHistoryScope } from '@/components/database/databaseHistoryScopeCoordinator';
+import { createGridRowSelectionStore } from '@/components/database/grid/gridRowSelectionStore';
 import {
   createGridInteractionStore,
   GridContext,
   GridInteractionContext,
+  GridRowSelectionContext,
 } from '@/components/database/grid/useGridContext';
 
 type GridProviderProps = {
@@ -74,6 +77,8 @@ function GridProviderContent({
   // Each database view owns independent transient interaction state.
   // eslint-disable-next-line react-hooks/exhaustive-deps
   const interactionStore = useMemo(() => createGridInteractionStore(), [activeViewId]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const selectionStore = useMemo(() => createGridRowSelectionStore(), [activeViewId]);
   const [visibleRowLimit, setVisibleRowLimit] = useState(EMBEDDED_GRID_INITIAL_ROW_LIMIT);
   const embeddedVisibleRowLimit = isDocumentBlock ? visibleRowLimit : undefined;
   const {
@@ -96,6 +101,55 @@ function GridProviderContent({
   const setRows = useCallback((value: RenderRow[]) => {
     setOptimisticRows({ base: initialRowsRef.current, value });
   }, []);
+  const orderedRowIdsRef = useRef<readonly string[]>([]);
+  const orderedRowIds = useMemo(() => {
+    const ids: string[] = [];
+    const seen = new Set<string>();
+
+    for (const row of rows) {
+      if (row.type !== RenderRowType.Row || !row.rowId || seen.has(row.rowId)) continue;
+      seen.add(row.rowId);
+      ids.push(row.rowId);
+    }
+
+    return ids;
+  }, [rows]);
+
+  useLayoutEffect(() => {
+    orderedRowIdsRef.current = orderedRowIds;
+  }, [orderedRowIds]);
+
+  // Selected rows that were deleted, filtered out or hidden can no longer be acted on.
+  useEffect(() => {
+    if (rowOrders === undefined) return;
+    selectionStore.prune(new Set(orderedRowIds));
+  }, [orderedRowIds, rowOrders, selectionStore]);
+
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== 'Escape' || event.defaultPrevented || selectionStore.getCount() === 0) return;
+
+      const target = event.target;
+
+      if (
+        target instanceof HTMLElement &&
+        (target.isContentEditable || target.closest('input, textarea, select, [contenteditable="true"], [role="dialog"], [role="alertdialog"], [role="menu"], [role="listbox"]'))
+      ) {
+        return;
+      }
+
+      selectionStore.clear();
+    };
+
+    document.addEventListener('keydown', onKeyDown);
+
+    return () => document.removeEventListener('keydown', onKeyDown);
+  }, [selectionStore]);
+
+  const selectionContextValue = useMemo(
+    () => ({ store: selectionStore, getOrderedRowIds: () => orderedRowIdsRef.current }),
+    [selectionStore]
+  );
   const isWheelingRef = useRef(false);
   const ref = useRef<HTMLDivElement | null>(null);
 
@@ -206,13 +260,16 @@ function GridProviderContent({
   return (
     <GridContext.Provider value={contextValue}>
       <GridInteractionContext.Provider value={interactionContextValue}>
+        <GridRowSelectionContext.Provider value={selectionContextValue}>
         <div
           ref={ref}
           data-database-history-scope={ownsHistoryScope ? historyScopeId : undefined}
           className={'flex min-h-0 flex-1 flex-col'}
         >
           {children}
+          <GridSelectionBar />
         </div>
+        </GridRowSelectionContext.Provider>
       </GridInteractionContext.Provider>
     </GridContext.Provider>
   );

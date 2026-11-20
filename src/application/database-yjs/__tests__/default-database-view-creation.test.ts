@@ -28,8 +28,11 @@ jest.mock('@/application/database-yjs/creation/source-readiness', () => ({
   ...jest.requireActual('@/application/database-yjs/creation/source-readiness'), readPersistedDatabaseSource: jest.fn(),
 }));
 
-function fixture() {
+function fixture(knownVersion?: string) {
   const doc = new Y.Doc({ guid: 'db' }) as YDoc;
+
+  // A doc that has adopted a collab version knows which one it must still see; a fresh one treats it as unknown.
+  if (knownVersion) doc.version = knownVersion;
   const root = new Y.Map();
   const views = new Y.Map();
   const source = new Y.Map();
@@ -50,7 +53,7 @@ function fixture() {
   const folder = new Map<string, { view_id: string; parent_view_id: string; layout: ViewLayout; extra: { database_id: string } }>();
 
   jest.mocked(atomicRead).mockImplementation(async (_owner, url) => {
-    if (url.endsWith('restore-state')) return { database_restore_id: null, version: null } as never;
+    if (url.endsWith('restore-state')) return { database_restore_id: null, version: knownVersion ?? null } as never;
     return folder.get(url.split('/').pop() ?? '') as never;
   });
   const publish = (request: { view: { view_id: string; responses_view_id: string | null; layout: DatabaseViewLayout } }) => {
@@ -199,8 +202,8 @@ it('refuses a current Folder mismatch without canonical mutation or compensating
   expect(f.activate).not.toHaveBeenCalled();
 });
 
-it('fails before compact submission when a source response has another version', async () => {
-  const f = fixture();
+it('fails before compact submission when a source response has another version than the one the local doc knows', async () => {
+  const f = fixture('old');
 
   jest.mocked(readCollabStates).mockResolvedValue([{ objectId: 'db', collabType: Types.Database,
     missingUpdate: Y.encodeStateAsUpdate(f.remote), serverStateVector: Y.encodeStateVector(f.remote), collabVersion: 'new' }]);
@@ -215,7 +218,6 @@ it('fails before compact submission when a source response has another version',
   expect(post).not.toHaveBeenCalled();
   expect(f.activate).not.toHaveBeenCalled();
 });
-
 
 it('retains later local edits while hydrating the current server result', async () => {
   const f = fixture();

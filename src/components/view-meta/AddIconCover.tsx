@@ -47,7 +47,11 @@ function AddIconCover({
         visibility: visible ? 'visible' : 'hidden',
       }}
       className={cn(
-        'flex h-full min-w-0 max-w-full items-end justify-start gap-2 px-24 max-sm:hidden max-sm:px-6',
+        // The parent strip (ViewMetaPreview) is pointer-events-none so it
+        // never blocks content rendered below it when empty -- this root
+        // opts itself back in so its own Add-icon/Add-cover buttons stay
+        // clickable while actually visible.
+        'pointer-events-auto flex h-full min-w-0 max-w-full items-end justify-start gap-2 px-24 max-sm:hidden max-sm:px-6',
         variant === 'peek' && 'row-peek-banner-controls',
         contentClassName
       )}

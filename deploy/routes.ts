@@ -25,7 +25,19 @@ type RouteHandler = (context: RequestContext) => Promise<Response | undefined>;
 
 // Static file paths that should be served from dist
 const STATIC_PATHS = ['/static/', '/af_icons/', '/covers/', '/.well-known/'];
-const STATIC_FILES = ['/appflowy.ico', '/appflowy.svg', '/og-image.png'];
+const STATIC_FILES = [
+  '/favicon.ico',
+  '/favicon.svg',
+  '/favicon-light.svg',
+  '/favicon-dark.svg',
+  '/apple-touch-icon.png',
+  '/app-icon.svg',
+  '/app-icon-dark.svg',
+  '/app-icon-192.png',
+  '/app-icon-512.png',
+  '/og-image.png',
+  '/og-image-dark.png',
+];
 
 // Vite emits content-hashed filenames under /static/, so they can be cached
 // forever; other assets keep a short lifetime. HTML must always be

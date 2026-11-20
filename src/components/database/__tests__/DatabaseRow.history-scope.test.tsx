@@ -25,6 +25,8 @@ jest.mock('@/components/database/components/database-row', () => {
   };
 });
 jest.mock('@/components/database/components/database-row/comment', () => ({ RowCommentList: () => null }));
+jest.mock('@/components/database/components/database-row/ask-ai/RowAskAI', () => ({ RowAskAI: () => null }));
+jest.mock('@/components/database/components/database-row/row-history/RowHistory', () => ({ RowHistory: () => null }));
 jest.mock('@/components/database/feed/FeedMembersContext', () => ({
   FeedMembersProvider: ({ children }: { children: React.ReactNode }) => children,
 }));

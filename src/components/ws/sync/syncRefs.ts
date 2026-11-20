@@ -197,6 +197,36 @@ export type SyncRefs = {
    * "setState on unmounted component" warnings.
    */
   isDisposedRef: React.MutableRefObject<boolean>;
+
+  /**
+   * Task 71 fix: the `doc.guid` of whichever object's SyncRequest was most
+   * recently sent on the CURRENT WebSocket connection — i.e. the server's
+   * `websocket.objectId` value, mirrored client-side.
+   *
+   * The server scopes each live WebSocket connection to a SINGLE bound
+   * object, SHARED across every collab type multiplexed onto that one
+   * socket (Document, Database, DatabaseRow, inline-comment anchors, etc.
+   * can all be registered at once). An `update` or `awarenessUpdate` frame
+   * for any object OTHER than the one most recently bound gets force-closed
+   * by the server (code 1008 "SyncRequest is required before updates", or
+   * 1003 "Unsupported ... message"). Before this fix, nothing on the client
+   * re-asserted an object's own binding before sending for it, so a second
+   * object's SyncRequest (e.g. a sidebar/outline prefetch, an inline-comment
+   * anchor doc) could silently "steal" the slot, and the NEXT local edit to
+   * the original document would get force-closed, fall through a
+   * reconnect, and only reach the backend ~10s later via the no-fan-out
+   * HTTP full-sync fallback — silently denying every other already-
+   * connected peer a live update even though the edit was durably persisted
+   * (see docs/TASK71_COLD_START_LIVE_RENDERING_REPORT.md).
+   *
+   * Updated every time a SyncRequest is actually sent (inside
+   * `registerSyncContext`'s `context.emit` wrapper in
+   * `useSyncContextLifecycle.ts`, which is the single choke point for every
+   * outgoing message any sync context ever sends). Reset to `null` whenever
+   * the transport leaves the OPEN state, since a reconnect invalidates the
+   * slot on the server's new connection.
+   */
+  lastBoundObjectId: React.MutableRefObject<string | null>;
 };
 
 export function useSyncRefs(): SyncRefs {
@@ -220,6 +250,7 @@ export function useSyncRefs(): SyncRefs {
   const processingObjectIdsRef = useRef<Set<string>>(new Set());
   const latestUserRef = useRef<User | undefined>(undefined);
   const isDisposedRef = useRef(false);
+  const lastBoundObjectId = useRef<string | null>(null);
 
   // Stable container — individual refs are already stable via useRef,
   // but the wrapper must also be referentially stable so downstream
@@ -239,5 +270,6 @@ export function useSyncRefs(): SyncRefs {
     processingObjectIdsRef,
     latestUserRef,
     isDisposedRef,
+    lastBoundObjectId,
   }), []);
 }

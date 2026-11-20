@@ -4,8 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { AuthService } from '@/application/services/domains';
 import { buildLoginUrl } from '@/application/session/sign_in';
 import { AuthProvider, LoginProviderId, LoginProviders } from '@/application/types';
-import { ReactComponent as ArrowRight } from '@/assets/icons/arrow_right.svg';
-import { ReactComponent as Logo } from '@/assets/icons/logo.svg';
+import { ReactComponent as Logo } from '@/assets/icons/workzen-symbol.svg';
 import { LOGIN_ACTION } from '@/components/login/const';
 import EmailLogin from '@/components/login/EmailLogin';
 import LoginProvider from '@/components/login/LoginProvider';
@@ -80,34 +79,11 @@ export function Login({ redirectTo }: { redirectTo: string }) {
           className={'flex w-full cursor-pointer flex-col items-center justify-center gap-5'}
         >
           <Logo className={'h-9 w-9'} />
-          <div className={'text-xl font-semibold'}>{t('welcomeTo')} AppFlowy</div>
+          <div className={'text-xl font-semibold'}>{t('welcomeTo')} {t('appName')}</div>
         </div>
         <EmailLogin redirectTo={redirectTo} />
-        <div
-          className={
-            'w-[300px] overflow-hidden whitespace-pre-wrap break-words text-center text-[12px] tracking-[0.36px] text-text-secondary'
-          }
-        >
-          <span>{t('web.signInAgreement')} </span>
-          <a
-            href={'https://appflowy.com/terms'}
-            target={'_blank'}
-            className={'text-text-secondary underline'}
-            rel='noreferrer'
-          >
-            {t('web.termOfUse')}
-          </a>{' '}
-          {t('web.and')}{' '}
-          <a
-            href={'https://appflowy.com/privacy'}
-            target={'_blank'}
-            className={'text-text-secondary underline'}
-            rel='noreferrer'
-          >
-            {t('web.privacyPolicy')}
-          </a>
-          .
-        </div>
+        {/* Keeps the form where it was before the upstream terms/privacy line was removed. */}
+        <div aria-hidden className={'h-9 w-[300px]'} />
         {hasOAuthProviders && (
           <div className={'flex w-full items-center justify-center gap-2 text-text-secondary'}>
             <Separator className={'flex-1'} />
@@ -139,25 +115,8 @@ export function Login({ redirectTo }: { redirectTo: string }) {
         </div>
       </div>
 
-      <div
-        style={{
-          marginBottom: isMobile ? 64 : '0',
-        }}
-        className={'flex w-full flex-col gap-5'}
-      >
-        <Separator className={'w-[320px] max-w-full'} />
-        <div
-          onClick={() => {
-            window.location.href = 'https://appflowy.com';
-          }}
-          className={
-            'flex w-full cursor-pointer items-center justify-center gap-2 text-xs font-medium text-text-secondary'
-          }
-        >
-          <span>{t('web.visitOurWebsite')}</span>
-          <ArrowRight className={'h-5 w-5'} />
-        </div>
-      </div>
+      {/* Same height as the removed upstream website footer, so the form stays vertically centred where it was. */}
+      <div aria-hidden style={{ marginBottom: isMobile ? 64 : '0' }} className={'h-[41px] w-full'} />
     </div>
   );
 }

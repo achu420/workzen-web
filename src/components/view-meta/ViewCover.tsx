@@ -72,7 +72,11 @@ function ViewCover({
         height: layout === ViewLayout.Document ? '40vh' : '25vh',
         maxHeight: layout === ViewLayout.Document ? '288px' : '200px',
       }}
-      className={'relative flex min-h-[130px] w-full max-sm:h-[180px]'}
+      // ViewMetaPreview's root wrapper is pointer-events-none (so its
+      // empty reserved space never blocks content underneath it); the
+      // cover itself must opt back in to keep its hover-to-reveal actions
+      // (remove/reposition) working.
+      className={'pointer-events-auto relative flex min-h-[130px] w-full max-sm:h-[180px]'}
     >
       {coverType === 'color' && renderCoverColor(coverValue)}
       {(coverType === 'custom' || coverType === 'built_in') && renderCoverImage(coverValue, coverOffset)}

@@ -245,8 +245,9 @@ function AppTheme({ children }: { children: React.ReactNode }) {
         palette: {
           mode: isDark ? 'dark' : 'light',
           primary: {
-            main: '#00BCF0',
-            dark: '#00BCF0',
+            // The bright cyan is 2.2:1 on white (text buttons, links); the deeper blue passes AA. Dark mode keeps the cyan.
+            main: isDark ? '#00BCF0' : '#0078b4',
+            dark: isDark ? '#00BCF0' : '#00659a',
           },
           secondary: {
             main: '#8427e0',

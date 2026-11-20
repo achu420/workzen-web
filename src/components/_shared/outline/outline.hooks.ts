@@ -2,6 +2,7 @@ import { debounce } from 'lodash-es';
 import React, { useCallback, useEffect, useMemo } from 'react';
 
 import { createHotkey, HOT_KEY_NAME } from '@/utils/hotkeys';
+import { NARROW_VIEWPORT_MAX } from '@/utils/viewport';
 
 export interface OutlineProps {
   onOpenDrawer: () => void;
@@ -85,8 +86,16 @@ export function useOutlineDrawer () {
     return localStorage.getItem('outline_open') === 'true';
   });
 
+  const lastWidth = React.useRef(window.innerWidth);
+
   useEffect(() => {
     const onResize = () => {
+      // On a phone the browser fires resize for the address bar and the keyboard (height only); that must not
+      // close a sidebar the person just opened.
+      const widthChanged = window.innerWidth !== lastWidth.current;
+
+      lastWidth.current = window.innerWidth;
+      if (window.innerWidth <= NARROW_VIEWPORT_MAX && !widthChanged) return;
       if (window.innerWidth - drawerWidth <= 768) {
         setDrawerOpened(false);
       } else if (localStorage.getItem('outline_open') !== 'false') {
@@ -109,6 +118,12 @@ export function useOutlineDrawer () {
   }, []);
 
   const toggleOpenDrawer = useCallback((status: boolean) => {
+    // On a phone the sidebar is a temporary overlay: opening or closing it says nothing about the desktop layout.
+    if (window.innerWidth <= NARROW_VIEWPORT_MAX) {
+      setDrawerOpened(status);
+      return;
+    }
+
     if (status && window.innerWidth - drawerWidth <= 768) {
       handleResize(268);
     }

@@ -2,6 +2,7 @@ import { createContext, useCallback, useContext, useSyncExternalStore } from 're
 
 import type { Row } from '@/application/database-yjs';
 import type { RenderRow } from '@/components/database/components/grid/grid-row';
+import type { GridRowSelectionStore } from '@/components/database/grid/gridRowSelectionStore';
 
 export type GridActiveCell = {
   rowId: string;
@@ -153,3 +154,40 @@ export function useGridContext() {
 
   return context;
 }
+
+type GridRowSelectionContextType = {
+  store: GridRowSelectionStore;
+  /** Row ids in current visual order (first occurrence only; grouped grids can repeat a row). */
+  getOrderedRowIds: () => readonly string[];
+};
+
+export const GridRowSelectionContext = createContext<GridRowSelectionContextType | undefined>(undefined);
+
+export function useGridRowSelection() {
+  return useContext(GridRowSelectionContext);
+}
+
+const noopSubscribe = () => () => undefined;
+
+export function useIsGridRowSelected(rowId: string) {
+  const store = useGridRowSelection()?.store;
+  const getSnapshot = useCallback(() => store?.isSelected(rowId) ?? false, [rowId, store]);
+
+  return useSyncExternalStore(store?.subscribe ?? noopSubscribe, getSnapshot, getSnapshot);
+}
+
+export function useGridSelectedRowIds(): readonly string[] {
+  const store = useGridRowSelection()?.store;
+  const getSnapshot = useCallback(() => store?.getSelectedIds() ?? NO_SELECTED_ROWS, [store]);
+
+  return useSyncExternalStore(store?.subscribe ?? noopSubscribe, getSnapshot, getSnapshot);
+}
+
+export function useHasGridRowSelection() {
+  const store = useGridRowSelection()?.store;
+  const getSnapshot = useCallback(() => (store?.getCount() ?? 0) > 0, [store]);
+
+  return useSyncExternalStore(store?.subscribe ?? noopSubscribe, getSnapshot, getSnapshot);
+}
+
+const NO_SELECTED_ROWS: readonly string[] = Object.freeze([]);

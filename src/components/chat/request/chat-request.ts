@@ -374,7 +374,16 @@ export class ChatRequest {
     });
 
     if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
+      // The server explains failures (for example 'AI is not configured...') in the JSON body.
+      const data: unknown = await response.json().catch(() => undefined);
+      const serverMessage =
+        typeof data === 'object' && data !== null && typeof (data as { message?: unknown }).message === 'string'
+          ? (data as { message: string }).message
+          : undefined;
+
+      throw Object.assign(new Error(serverMessage || `HTTP error! status: ${response.status}`), {
+        status: response.status,
+      });
     }
 
     const streamPromise = (async () => {
@@ -767,5 +776,23 @@ export class ChatRequest {
     }
 
     return Promise.reject(response?.data?.message || 'Failed to update chat settings');
+  }
+
+  /** Deletes this chat and its messages (the server only allows it for the chat's own creator). */
+  async deleteChat(): Promise<void> {
+    if (!this.workspaceId || !this.chatId) {
+      return Promise.reject('workspaceId or chatId is not defined');
+    }
+
+    const response = await this.axiosInstance.delete<{
+      code: number;
+      message?: string;
+    }>(`/api/chat/${this.workspaceId}/${this.chatId}`);
+
+    if (response?.data?.code === 0) {
+      return;
+    }
+
+    return Promise.reject(response?.data?.message || 'Failed to clear chat history');
   }
 }

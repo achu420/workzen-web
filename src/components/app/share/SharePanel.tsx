@@ -10,7 +10,7 @@ import {
 import { isSameUserUid } from '@/application/user-uid';
 import { notify } from '@/components/_shared/notify';
 import { useLoadMentionableUsers, useGetSubscriptions, useUserWorkspaceInfo } from '@/components/app/app.hooks';
-import { useIsOfficialHosted } from '@/components/app/hooks/useServerInfo';
+import { useIsOfficialHosted, useServerInfoState } from '@/components/app/hooks/useServerInfo';
 import { useWorkspaceSubscriptionPlan } from '@/components/app/hooks/useWorkspaceSubscriptionPlan';
 import { CopyLink } from '@/components/app/share/CopyLink';
 import { GeneralAccess } from '@/components/app/share/GeneralAccess';
@@ -65,7 +65,11 @@ function SharePanel({
   const [mentionableError, setMentionableError] = useState<string | null>(null);
   const isOwner = role === Role.Owner || isSameUserUid(selectedWorkspace?.owner?.uid, currentUser?.uid);
   const isMember = role === Role.Member;
-  const showInviteControls = currentUserAccessLevel !== undefined && currentUserAccessLevel !== AccessLevel.ReadOnly;
+  // Servers where pages are not shared one by one (everyone in the workspace can open everything) say so; the popover
+  // then only lists who has access, with no invite box and no per-person permission menus.
+  const serverInfo = useServerInfoState();
+  const pageSharingSupported = !(serverInfo.status === 'available' && serverInfo.info?.enable_page_sharing === false);
+  const showInviteControls = pageSharingSupported && currentUserAccessLevel !== undefined && currentUserAccessLevel !== AccessLevel.ReadOnly;
   // Page Full Access does not make a Guest part of the workspace group boundary.
   const canManageGroupAccess = hasFullAccess && (isOwner || isMember);
 
@@ -159,7 +163,7 @@ function SharePanel({
           canGrantFullAccess={canManageFullAccess}
           // Listing a group's members is a workspace-owner capability on the server.
           canExploreGroupMembers={isOwner}
-          disablePersonAccessChanges={disablePersonAccessChanges}
+          disablePersonAccessChanges={disablePersonAccessChanges || !pageSharingSupported}
           sectionType={sectionType}
         />
         <GeneralAccess sectionType={sectionType} accessLevel={generalAccessLevel} />

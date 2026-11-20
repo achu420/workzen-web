@@ -28,6 +28,7 @@ import { YDoc, YjsEditorKey } from '@/application/types';
 import { applyYDoc } from '@/application/ydoc/apply';
 import { database_blob } from '@/proto/database_blob';
 import { Log } from '@/utils/log';
+import { getServerInfoSnapshot } from '@/utils/server-info';
 
 import { createDatabaseBlobDiffPageStage, type DatabaseBlobDiffPageStage } from './page-stage';
 import {
@@ -1550,7 +1551,15 @@ async function fetchReadyDiff(
   }
 }
 
+/** A server that says it has no bulk-row endpoint is never asked for one; rows then arrive through per-row sync. */
+function isBlobDiffUnavailable(): boolean {
+  const serverInfo = getServerInfoSnapshot();
+
+  return serverInfo.status === 'available' && serverInfo.info.enable_database_blob_diff === false;
+}
+
 export async function prefetchDatabaseBlobDiff(workspaceId: string, databaseId: string, options?: PrefetchOptions) {
+  if (isBlobDiffUnavailable()) return;
   synchronizeRowSeedCacheSession();
   const { sharedKey, entry: existingEntry } = findSharedPrefetchEntry(workspaceId, databaseId, options);
 

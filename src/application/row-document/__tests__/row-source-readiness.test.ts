@@ -4,10 +4,39 @@ import { RowMetaKey } from '@/application/database-yjs/database.type';
 import { getMetaIdMap } from '@/application/database-yjs/row_meta';
 import { writeTemplateRecords } from '@/application/database-yjs/template/storage';
 
-import { hasCurrentRowDocumentSource, waitForRowDocumentSource } from '../row-source-readiness';
+import { decodeCurrentRowPageCollab, hasCurrentRowDocumentSource, waitForRowDocumentSource } from '../row-source-readiness';
 
 const rowId = '11111111-1111-4111-8111-111111111111';
 const documentId = getMetaIdMap(rowId).get(RowMetaKey.DocumentId)!;
+
+describe('decodeCurrentRowPageCollab version tolerance', () => {
+  const objectId = 'database';
+
+  function state(doc: Y.Doc, collabVersion: string | null) {
+    return { object_id: doc.guid, doc_state: Array.from(Y.encodeStateAsUpdate(doc)), version: 0, collab_version: collabVersion };
+  }
+
+  it.each([undefined, null])('accepts any reported collab_version when the caller has no local version yet (%p)', (localVersion) => {
+    const doc = new Y.Doc({ guid: objectId });
+
+    doc.getMap('data').set('seed', 1);
+    const decoded = decodeCurrentRowPageCollab(state(doc, 'server-generation-1'), objectId, localVersion);
+
+    expect(decoded.version).toBe('server-generation-1');
+    decoded.destroy();
+    doc.destroy();
+  });
+
+  it('still rejects a mismatched collab_version once a local version is known', () => {
+    const doc = new Y.Doc({ guid: objectId });
+
+    doc.getMap('data').set('seed', 1);
+    expect(() => decodeCurrentRowPageCollab(state(doc, 'server-generation-2'), objectId, 'server-generation-1')).toThrow(
+      'The current row-page identity or version changed.'
+    );
+    doc.destroy();
+  });
+});
 
 it.each(['current', 'missing', 'deleted', 'other-row', 'other-document', 'missing-view'])('checks %s hidden template source', (kind) => {
   const doc = new Y.Doc();
@@ -67,6 +96,40 @@ it.each([false, true])('uses canonical visibility for linked row membership (Y.M
     expect(read).toHaveBeenCalledTimes(1);
   } finally {
     row.destroy();
+    doc.destroy();
+  }
+});
+
+it('resolves a hidden template row via its metas registration even before its own DatabaseRow collab exists', async () => {
+  // Reproduces Task 79's live repro: a brand-new database template's row is
+  // never created ahead of time (createTemplate()/ensureTemplateRow() only
+  // opens it locally) -- it is committed together with its row-document by
+  // the very atomic request this readiness check gates. Requiring
+  // state.row to already exist made this branch unreachable and the
+  // readiness check spun until its deadline for every new template.
+  const doc = new Y.Doc({ guid: 'database' });
+  const database = new Y.Map<unknown>();
+
+  doc.getMap('data').set('database', database);
+  database.set('id', 'database');
+  database.set('views', new Y.Map([['linked', new Y.Map([['row_orders', new Y.Array()]])]]));
+  const metas = new Y.Map<unknown>();
+
+  database.set('metas', metas);
+  writeTemplateRecords(metas, [{ template_id: rowId, name: 'Template', doc_view_id: documentId }]);
+
+  const state = (value: Y.Doc) => ({ object_id: value.guid, doc_state: Array.from(Y.encodeStateAsUpdate(value)), version: 0 });
+  // The row's own collab has never been created server-side -- the read
+  // resolves without a `row` field, exactly as atomic-first-body.ts's
+  // readSource() normalizes a 404/PageNotFound for it.
+  const read = jest.fn(async () => ({ database: state(doc) }));
+
+  try {
+    await expect(waitForRowDocumentSource({ databaseId: 'database', sourceViewId: 'linked', rowId }, {
+      read, assertCurrent: () => {}, signal: new AbortController().signal, deadline: Date.now() + 1_000,
+    })).resolves.toBeUndefined();
+    expect(read).toHaveBeenCalledTimes(1);
+  } finally {
     doc.destroy();
   }
 });

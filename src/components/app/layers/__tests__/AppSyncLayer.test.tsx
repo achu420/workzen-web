@@ -96,6 +96,12 @@ const stableSyncValue = {
   ensureDatabaseRestoreCurrent: jest.fn(async () => true),
   reloadDatabaseAfterRestore: jest.fn(async () => undefined),
   scheduleDeferredCleanup: jest.fn(),
+  // Task 71 fix: AppSyncLayer's drain `send` callback now calls this before
+  // writing to the socket, to re-assert this object's SyncRequest binding
+  // if another object's bind most recently "won" the shared connection
+  // slot. A no-op default keeps existing assertions about send/isReady
+  // behavior meaningful.
+  ensureObjectBoundForSend: jest.fn(),
 };
 
 const createWsValue = (lastMessage: messages.Message | null): AppflowyWebSocketType =>
@@ -284,6 +290,44 @@ describe('AppSyncLayer per-message churn', () => {
 
     expect(leaderConfig.isReady()).toBe(false);
     expect(leaderConfig.slowSync).toEqual(expect.any(Function));
+  });
+
+  // Task 76.1 Scenario E: the socket can close while `ensureObjectBoundForSend`
+  // is still pending (it can be deferred behind an async `beforeSend` check --
+  // see docs/TASK76_ORDERED_COLLABORATION_SEND_REPORT.md). The dependent
+  // update must not reach `wsSendMessage` once the socket is no longer OPEN,
+  // even though it looked OPEN at the moment `send` was first called.
+  it('does not transmit the dependent update if the socket closes while the binding reassertion is pending', async () => {
+    const outboxMock = jest.requireMock('@/application/sync-outbox');
+    let resolveBinding!: () => void;
+    const pendingBinding = new Promise<void>((resolve) => { resolveBinding = resolve; });
+
+    stableSyncValue.ensureObjectBoundForSend.mockReturnValueOnce(pendingBinding);
+
+    const { rerender } = renderLayer();
+    const leaderConfig = outboxMock.configureDrain.mock.calls.at(-1)?.[0];
+
+    const sendPromise = leaderConfig.send({
+      collabMessage: { objectId: 'object-1', collabType: 1, update: {} },
+    });
+
+    // The binding reassertion is still pending; nothing has reached the wire.
+    expect(stableWsSendMessage).not.toHaveBeenCalled();
+
+    // The socket closes while the reassertion is in flight.
+    mockUseWorkspaceRealtimeTransport.mockReturnValue({
+      webSocket: { ...createWsValue(null), readyState: 3 },
+      broadcastChannel: stableBcValue,
+      canSendToServer: true,
+      sendBestEffort: stableSendBestEffort,
+    });
+    rerenderLayer(rerender);
+
+    // Now let the binding reassertion resolve.
+    resolveBinding();
+
+    await expect(sendPromise).rejects.toThrow('WS not OPEN at send time');
+    expect(stableWsSendMessage).not.toHaveBeenCalled();
   });
 
   it('resumes a permission-blocked object when access changes', () => {

@@ -28,6 +28,7 @@ import {
   ORIGINAL_DATABASE_RESTORE_ID,
   readPersistedDatabaseSource,
   remoteDatabaseCoversSource,
+  restoreStateMatches,
   waitForDatabaseViewSource,
 } from './source-readiness';
 
@@ -114,8 +115,7 @@ async function createDefaultDatabaseViewOwned(intent: DefaultDatabaseViewIntent)
 
     assertNotAborted(signal);
     assertCurrent();
-    if ((state.database_restore_id ?? ORIGINAL_DATABASE_RESTORE_ID) !== restoreId ||
-      (state.version ?? undefined) !== version || !(await matchesDatabaseStorageFence(capturedFence))) {
+    if (!restoreStateMatches(state, { restoreId, version }) || !(await matchesDatabaseStorageFence(capturedFence))) {
       throw new Error('Database source restore generation changed');
     }
   };

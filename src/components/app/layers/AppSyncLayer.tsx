@@ -131,6 +131,7 @@ export const AppSyncLayer: FC<AppSyncLayerProps> = ({ children }) => {
     reloadDatabaseAfterRestore,
     revertCollabVersion,
     scheduleDeferredCleanup,
+    ensureObjectBoundForSend,
   } = useSync(webSocket, broadcastChannel, eventEmitter, currentWorkspaceId!, {
     enabled: enableDatabaseHistory, capabilityLoaded: databaseHistoryCapabilityLoaded,
   });
@@ -202,6 +203,19 @@ export const AppSyncLayer: FC<AppSyncLayerProps> = ({ children }) => {
   useEffect(() => {
     wsReadyStateRef.current = wsReadyState;
   }, [wsReadyState]);
+
+  // Task 71 fix: same latest-ref pattern as wsReadyStateRef above, for the
+  // same reason — the outbox drain can run after this render.
+  // `ensureObjectBoundForSend` re-asserts (re-sends) this object's own
+  // SyncRequest on the current connection immediately before its `update`
+  // frame, in case a DIFFERENT object's SyncRequest most recently "won" the
+  // server's single shared `websocket.objectId` slot for this connection —
+  // see docs/TASK71_COLD_START_LIVE_RENDERING_REPORT.md for the evidence.
+  const ensureObjectBoundForSendRef = useRef(ensureObjectBoundForSend);
+
+  useEffect(() => {
+    ensureObjectBoundForSendRef.current = ensureObjectBoundForSend;
+  }, [ensureObjectBoundForSend]);
 
   // Re-derive only when auth state flips — the user id is stable for the
   // lifetime of an authenticated session, so re-parsing the token on every
@@ -347,7 +361,37 @@ export const AppSyncLayer: FC<AppSyncLayerProps> = ({ children }) => {
       // react-use-websocket's in-memory retry queue (which would be lost on
       // refresh). The drain catches send failures and leaves outbox records
       // in place for retry.
-      send: (message) => {
+      //
+      // Task 71 fix: the server scopes a connection's `websocket.objectId` to
+      // the single most-recently-SyncRequest-ed object, SHARED across every
+      // collab object multiplexed onto this one socket (Document, Database,
+      // DatabaseRow, inline-comment anchors, etc. can all be registered at
+      // once). If some OTHER object's SyncRequest most recently "won" that
+      // slot, an `update` for THIS object gets force-closed (code 1008) even
+      // though this object's own bind looked established moments earlier.
+      // `ensureObjectBoundForSend` re-sends this object's own SyncRequest
+      // first whenever that's the case, synchronously and immediately before
+      // this frame, on the same connection — WebSocket/TCP ordering then
+      // guarantees the server processes the rebind before the update that
+      // depends on it, with no round-trip wait needed. See
+      // docs/TASK71_COLD_START_LIVE_RENDERING_REPORT.md for the evidence.
+      // Task 76 fix: `ensureObjectBoundForSend` can defer its SyncRequest's
+      // actual transmission behind an async `beforeSend` gate (Database/
+      // DatabaseRow restore-state check). We now `await` that transmission
+      // before sending the dependent update, instead of assuming the
+      // rebind is already on the wire the instant the synchronous call
+      // above returns -- see docs/TASK76_ORDERED_COLLABORATION_SEND_REPORT.md.
+      send: async (message) => {
+        if (!canSendToServer || wsReadyStateRef.current !== WS_READY_STATE_OPEN) {
+          throw new Error('[outbox] WS not OPEN at send time');
+        }
+
+        const objectId = message.collabMessage?.objectId;
+
+        if (objectId) {
+          await ensureObjectBoundForSendRef.current(objectId);
+        }
+
         if (!canSendToServer || wsReadyStateRef.current !== WS_READY_STATE_OPEN) {
           throw new Error('[outbox] WS not OPEN at send time');
         }

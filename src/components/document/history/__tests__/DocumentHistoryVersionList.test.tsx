@@ -130,3 +130,109 @@ test('non-hosted free plans do not show the cloud upgrade banner', () => {
   expect(screen.queryByText('versionHistory.upgrade')).not.toBeInTheDocument();
   expect(screen.getByTestId('version-history-restore-button')).toBeEnabled();
 });
+
+describe('create snapshot', () => {
+  test('control is visible but disabled without a handler', () => {
+    render(<VersionList {...listProps()} />);
+    expect(screen.getByTestId('version-history-create-snapshot-button')).toBeDisabled();
+  });
+
+  test('empty name is rejected without calling the API', () => {
+    const onCreateSnapshot = jest.fn().mockResolvedValue(true);
+
+    render(<VersionList {...listProps()} onCreateSnapshot={onCreateSnapshot} />);
+    fireEvent.click(screen.getByTestId('version-history-create-snapshot-button'));
+    fireEvent.click(screen.getByTestId('version-history-create-snapshot-confirm'));
+
+    expect(onCreateSnapshot).not.toHaveBeenCalled();
+    expect(screen.getByText('versionHistory.createSnapshotNameEmpty')).toBeInTheDocument();
+    // The dialog must stay open and usable after a validation failure.
+    expect(screen.getByTestId('version-history-create-snapshot-name-input')).toBeInTheDocument();
+  });
+
+  test('a valid name calls the API, disables the button while in-flight, and closes on success', async () => {
+    let resolveCreate: (value: boolean) => void = () => undefined;
+    const onCreateSnapshot = jest.fn(
+      () => new Promise<boolean>((resolve) => { resolveCreate = resolve; })
+    );
+
+    render(<VersionList {...listProps()} onCreateSnapshot={onCreateSnapshot} />);
+    fireEvent.click(screen.getByTestId('version-history-create-snapshot-button'));
+    fireEvent.change(screen.getByTestId('version-history-create-snapshot-name-input'), {
+      target: { value: 'My milestone' },
+    });
+    fireEvent.click(screen.getByTestId('version-history-create-snapshot-confirm'));
+
+    expect(onCreateSnapshot).toHaveBeenCalledWith('My milestone');
+    expect(onCreateSnapshot).toHaveBeenCalledTimes(1);
+
+    // Duplicate submission while in-flight must not call the API again.
+    fireEvent.click(screen.getByTestId('version-history-create-snapshot-confirm'));
+    expect(onCreateSnapshot).toHaveBeenCalledTimes(1);
+
+    resolveCreate(true);
+    await screen.findByTestId('version-history-create-snapshot-button');
+    expect(screen.queryByTestId('version-history-create-snapshot-name-input')).not.toBeInTheDocument();
+  });
+
+  test('API failure keeps the dialog open and usable', async () => {
+    const onCreateSnapshot = jest.fn().mockResolvedValue(false);
+
+    render(<VersionList {...listProps()} onCreateSnapshot={onCreateSnapshot} />);
+    fireEvent.click(screen.getByTestId('version-history-create-snapshot-button'));
+    fireEvent.change(screen.getByTestId('version-history-create-snapshot-name-input'), {
+      target: { value: 'Will fail' },
+    });
+    fireEvent.click(screen.getByTestId('version-history-create-snapshot-confirm'));
+
+    await screen.findByTestId('version-history-create-snapshot-name-input');
+    expect(onCreateSnapshot).toHaveBeenCalledWith('Will fail');
+    // Modal stays usable: cancel still works.
+    fireEvent.click(screen.getByTestId('version-history-create-snapshot-cancel'));
+    expect(screen.queryByTestId('version-history-create-snapshot-name-input')).not.toBeInTheDocument();
+  });
+});
+
+describe('delete version', () => {
+  test('delete control is visible for eligible entries', () => {
+    render(<VersionList {...listProps()} onDeleteVersion={jest.fn()} />);
+    expect(screen.getByTestId('version-history-delete-button-latest')).toBeInTheDocument();
+    expect(screen.getByTestId('version-history-delete-button-previous')).toBeInTheDocument();
+  });
+
+  test('delete control is absent without a handler', () => {
+    render(<VersionList {...listProps()} />);
+    expect(screen.queryByTestId('version-history-delete-button-latest')).not.toBeInTheDocument();
+  });
+
+  test('cancel makes no API call', () => {
+    const onDeleteVersion = jest.fn();
+
+    render(<VersionList {...listProps()} onDeleteVersion={onDeleteVersion} />);
+    fireEvent.click(screen.getByTestId('version-history-delete-button-latest'));
+    expect(screen.getByText('versionHistory.deleteVersionConfirmTitle')).toBeInTheDocument();
+    fireEvent.click(screen.getByTestId('version-history-delete-cancel'));
+
+    expect(onDeleteVersion).not.toHaveBeenCalled();
+    expect(screen.queryByText('versionHistory.deleteVersionConfirmTitle')).not.toBeInTheDocument();
+  });
+
+  test('confirm invokes the tombstone-delete API with the right version id', () => {
+    const onDeleteVersion = jest.fn();
+
+    render(<VersionList {...listProps()} onDeleteVersion={onDeleteVersion} />);
+    fireEvent.click(screen.getByTestId('version-history-delete-button-previous'));
+    fireEvent.click(screen.getByTestId('version-history-delete-confirm'));
+
+    expect(onDeleteVersion).toHaveBeenCalledWith('previous');
+    expect(onDeleteVersion).toHaveBeenCalledTimes(1);
+  });
+
+  test('delete buttons are disabled while a deletion is in flight, preventing duplicates', () => {
+    const onDeleteVersion = jest.fn();
+
+    render(<VersionList {...listProps()} onDeleteVersion={onDeleteVersion} isDeletingVersion />);
+    expect(screen.getByTestId('version-history-delete-button-latest')).toBeDisabled();
+    expect(screen.getByTestId('version-history-delete-button-previous')).toBeDisabled();
+  });
+});

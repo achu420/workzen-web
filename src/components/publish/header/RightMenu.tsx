@@ -3,12 +3,11 @@ import { useCallback, useContext } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { PublishContext, usePublishContext } from '@/application/publish';
-import { ReactComponent as Logo } from '@/assets/icons/logo.svg';
+import { ReactComponent as Logo } from '@/assets/icons/workzen-symbol.svg';
 import { ReactComponent as TemplateIcon } from '@/assets/icons/template.svg';
 import MoreActions from '@/components/_shared/more-actions/MoreActions';
 import { useCurrentUser } from '@/components/main/app.hooks';
 import { Duplicate } from '@/components/publish/header/duplicate';
-import { openOrDownload } from '@/utils/open_schema';
 
 function RightMenu() {
   const { t } = useTranslation();
@@ -44,8 +43,8 @@ function RightMenu() {
         </Tooltip>
       )}
       <Divider orientation={'vertical'} className={'mx-2'} flexItem />
-      <Tooltip title={t('publish.downloadApp')}>
-        <button onClick={() => openOrDownload()}>
+      <Tooltip title={t('appName')}>
+        <button onClick={() => window.open('/app', '_self')}>
           <Logo className={'h-5 w-5'} />
         </button>
       </Tooltip>

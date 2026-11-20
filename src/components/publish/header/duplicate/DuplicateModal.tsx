@@ -1,5 +1,5 @@
 import React, { useCallback, useContext, useEffect } from 'react';
-import { Trans, useTranslation } from 'react-i18next';
+import { useTranslation } from 'react-i18next';
 
 import { PublishContext } from '@/application/publish';
 import { PublishService } from '@/application/services/domains';
@@ -10,7 +10,6 @@ import { notify } from '@/components/_shared/notify';
 import SelectWorkspace from '@/components/publish/header/duplicate/SelectWorkspace';
 import SpaceList from '@/components/publish/header/duplicate/SpaceList';
 import { useLoadWorkspaces } from '@/components/publish/header/duplicate/useDuplicate';
-import { downloadPage, openAppFlowySchema } from '@/utils/url';
 
 export function getCollabTypeFromViewLayout(layout: ViewLayout) {
   if (layout === ViewLayout.Document) return Types.Document;
@@ -125,7 +124,6 @@ function DuplicateModal({ open, onClose }: { open: boolean; onClose: () => void 
           },
         }}
         okText={t('openInBrowser')}
-        cancelText={t('openInApp')}
         onOk={() => {
           if (!newViewId || !selectedWorkspaceId) return;
           let url = `/app/${selectedWorkspaceId}/${newViewId}`;
@@ -140,30 +138,11 @@ function DuplicateModal({ open, onClose }: { open: boolean; onClose: () => void 
 
           window.open(url, '_self');
         }}
-        onCancel={() => {
-          window.open(openAppFlowySchema, '_self');
-        }}
+        onCancel={() => setSuccessModalOpen(false)}
         onClose={() => setSuccessModalOpen(false)}
         open={successModalOpen}
         title={<div className={'text-left'}>{t('addToWorkspace')}</div>}
       >
-        <div className={'w-full whitespace-pre-wrap break-words pb-1 text-text-secondary'}>
-          <Trans
-            i18nKey='downloadTip'
-            components={{
-              link: (
-                <span
-                  onClick={() => {
-                    window.open(downloadPage, '_blank');
-                  }}
-                  className={'cursor-pointer text-text-action hover:underline'}
-                >
-                  {t('here')}
-                </span>
-              ),
-            }}
-          />
-        </div>
       </NormalModal>
     </>
   );

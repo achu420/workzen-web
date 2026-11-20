@@ -154,6 +154,7 @@ function ControlActions({ setOpenMenu, blockId, parentId, onDraggingChange }: Co
         <IconButton
           onClick={onClickAdd}
           size={'small'}
+          aria-label={t('blockActions.addBelowTooltip', { defaultValue: 'Add a block' })}
           data-testid={'add-block'}
         >
           <AddSvg/>
@@ -169,6 +170,7 @@ function ControlActions({ setOpenMenu, blockId, parentId, onDraggingChange }: Co
         <IconButton
           ref={dragHandleRef}
           size={'small'}
+          aria-label={t('blockActions.dragTooltip', { defaultValue: 'Drag to move' })}
           data-testid={'drag-block'}
           onClick={onClickOptions}
           className={`${isDragging ? 'cursor-grabbing opacity-70' : 'cursor-grab'} ${isSimpleTable ? 'simple-table-block-drag-button' : ''}`}

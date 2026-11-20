@@ -4,16 +4,11 @@ import { toast } from 'sonner';
 
 import { ExportService } from '@/application/services/domains';
 import { isSameUserUid } from '@/application/user-uid';
-import { ReactComponent as HelpIcon } from '@/assets/icons/help.svg';
 import { useCurrentWorkspaceId, useUserWorkspaceInfo } from '@/components/app/app.hooks';
 import { useCurrentUser } from '@/components/main/app.hooks';
 import { Button } from '@/components/ui/button';
-import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { getErrorMessage } from '@/utils/errors';
-import { openUrl } from '@/utils/url';
 
-const IMPORT_GUIDE_URL = 'https://appflowy.com/guide/import-from-AppFlowy';
-const BACKUP_GUIDE_URL = 'https://appflowy.com/guide/back-up-your-data';
 
 export function ManageDataPanel({ onImport }: { onImport: () => void }) {
   const { t } = useTranslation();
@@ -62,7 +57,6 @@ export function ManageDataPanel({ onImport }: { onImport: () => void }) {
               <h3 className='text-base font-semibold text-text-primary'>
                 {t('settings.manageData.importWorkspace.title')}
               </h3>
-              <HelpTip url={IMPORT_GUIDE_URL} />
             </div>
             <p className='mt-1 text-sm text-text-secondary'>{t('settings.manageData.importWorkspace.tooltip')}</p>
           </div>
@@ -80,7 +74,6 @@ export function ManageDataPanel({ onImport }: { onImport: () => void }) {
                 <h3 className='text-base font-semibold text-text-primary'>
                   {t('settings.manageData.backupWorkspace.title')}
                 </h3>
-                <HelpTip url={BACKUP_GUIDE_URL} />
               </div>
               <p className='mt-1 text-sm text-text-secondary'>{t('settings.manageData.backupWorkspace.tooltip')}</p>
             </div>
@@ -98,24 +91,6 @@ export function ManageDataPanel({ onImport }: { onImport: () => void }) {
         )}
       </div>
     </div>
-  );
-}
-
-function HelpTip({ url }: { url: string }) {
-  const { t } = useTranslation();
-  const handleClick = useCallback(() => {
-    void openUrl(url, '_blank');
-  }, [url]);
-
-  return (
-    <Tooltip>
-      <TooltipTrigger asChild>
-        <span onClick={handleClick} className='cursor-pointer text-icon-secondary hover:text-icon-primary'>
-          <HelpIcon className='h-4 w-4' />
-        </span>
-      </TooltipTrigger>
-      <TooltipContent>{t('workspace.learnMore')}</TooltipContent>
-    </Tooltip>
   );
 }
 

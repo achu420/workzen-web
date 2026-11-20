@@ -1,0 +1,26 @@
+/*
+ * Contrast adjustments (WCAG AA, 4.5:1 for text) on top of the generated design tokens in ./variables/.
+ * The generated files are rebuilt from JSON by scripts/system-token, so the changes live here, loaded after them.
+ *
+ *  - Primary buttons: white text on the bright cyan (#00b5ff) was 2.3:1; the deeper blue is 4.8:1.
+ *  - Links and "action" text: #0092d6 on white was 3.4:1.
+ *  - Secondary / tertiary text (inactive tabs, hints, timestamps): 4.6:1 and 2.7:1 before.
+ *  - Dark mode: tertiary text was 3.4:1 on the page background.
+ */
+:root {
+  --text-secondary: #5a5f77;
+  --text-tertiary: #6a6f87;
+  --text-action: #0078b4;
+  --text-action-hover: #00659a;
+  --text-info: #0078b4;
+  --fill-theme-thick: #0078b4;
+  --fill-theme-thick-hover: #00659a;
+}
+
+:root[data-dark-mode=true] {
+  --text-secondary: #a6abc2;
+  --text-tertiary: #8d93ab;
+  /* Keep the bright blue for text and icons on dark; buttons with white text get the deeper one. */
+  --fill-theme-thick: #0078b4;
+  --fill-theme-thick-hover: #1088c6;
+}

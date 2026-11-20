@@ -82,26 +82,34 @@ export enum UpdateFlags {
 const isEmptyUpdateV1 = (update: Uint8Array): boolean =>
   update.byteLength === 2 && update[0] === 0 && update[1] === 0;
 
-/**
- * Bind an existing sync context to the current realtime connection.
- *
- * The state-vector request starts a manifest exchange with the server. Unlike
- * {@link initSync}, this function does not attach Y.Doc or awareness observers,
- * so it is safe to call again whenever the WebSocket reopens.
- */
-export const bindSyncContext = (ctx: SyncContext): void => {
-  const { doc, awareness, emit, collabType, lastMessageId } = ctx;
+// What this context last sent in answer to a server manifest. A document with
+// deleted items never produces an empty diff (Yjs always re-encodes the whole
+// delete set), so without this an identical manifest is answered with identical
+// bytes every time; the server then answers that reply with another manifest and
+// the exchange never settles. Cleared on (re)bind so a new connection resends.
+const lastManifestReplies = new WeakMap<SyncContext, string>();
 
-  if (!doc) {
-    throw new Error('SyncContext must have a Y.Doc instance.');
+const manifestReplySignature = (stateVector: Uint8Array | undefined, update: Uint8Array): string => {
+  let hash = 0x811c9dc5;
+
+  for (let index = 0; index < update.byteLength; index += 1) {
+    hash = Math.imul(hash ^ update[index], 0x01000193) >>> 0;
   }
 
-  Log.debug('[sync] binding context with manifest exchange', {
-    objectId: doc.guid,
-    collabType,
-    version: doc.version,
-  });
-  emit({
+  return `${stateVector ? Array.from(stateVector).join('.') : ''}|${update.byteLength}|${hash}`;
+};
+
+/**
+ * Build (without sending) the SyncRequest message that asserts this context's
+ * object as the one its connection is currently bound to. Factored out of
+ * {@link bindSyncContext} so other call sites (the Task 71 re-assert-before-
+ * send fix in `useSyncContextLifecycle.ts`) can construct the identical frame
+ * without going through `ctx.emit` a second time.
+ */
+export const buildSyncRequestMessage = (ctx: SyncContext): messages.IMessage => {
+  const { doc, collabType, lastMessageId } = ctx;
+
+  return {
     collabMessage: {
       objectId: doc.guid,
       collabType,
@@ -111,7 +119,35 @@ export const bindSyncContext = (ctx: SyncContext): void => {
         version: doc.version,
       },
     },
+  };
+};
+
+/**
+ * Bind an existing sync context to the current realtime connection.
+ *
+ * The state-vector request starts a manifest exchange with the server. Unlike
+ * {@link initSync}, this function does not attach Y.Doc or awareness observers,
+ * so it is safe to call again whenever the WebSocket reopens.
+ */
+export const bindSyncContext = (ctx: SyncContext): Promise<void> | void => {
+  const { doc, awareness, emit, collabType } = ctx;
+
+  if (!doc) {
+    throw new Error('SyncContext must have a Y.Doc instance.');
+  }
+
+  lastManifestReplies.delete(ctx);
+  Log.debug('[sync] binding context with manifest exchange', {
+    objectId: doc.guid,
+    collabType,
+    version: doc.version,
   });
+  // Task 76: propagate `emit`'s returned Promise (if any) so callers that
+  // need to know the SyncRequest has actually been transmitted -- e.g.
+  // `ensureObjectBoundForSend` -- can await it before sending a dependent
+  // frame. Fire-and-forget callers are unaffected (a returned Promise is
+  // assignable to a `void`-typed caller).
+  const emitted = emit(buildSyncRequestMessage(ctx));
 
   if (awareness) {
     const allClients = Array.from(awareness.getStates().keys());
@@ -126,6 +162,8 @@ export const bindSyncContext = (ctx: SyncContext): void => {
       },
     });
   }
+
+  return emitted;
 };
 
 const handleSyncRequest = (ctx: SyncContext, message: collab.ISyncRequest): void => {
@@ -149,6 +187,16 @@ const handleSyncRequest = (ctx: SyncContext, message: collab.ISyncRequest): void
     ctx.onManifestSync?.(doc.guid);
     return;
   }
+
+  // The server already has this exact answer to this exact manifest.
+  const signature = manifestReplySignature(stateVector, update);
+
+  if (lastManifestReplies.get(ctx) === signature) {
+    ctx.onManifestSync?.(doc.guid);
+    return;
+  }
+
+  lastManifestReplies.set(ctx, signature);
 
   // A manifest response can contain years of locally retained Yjs history.
   // If it exceeds the server-advertised realtime frame limit, persist it and

@@ -69,6 +69,10 @@ export interface AppOperationsContextType {
   // ── Page CRUD ──────────────────────────────────────────────────────
   /** Create a new page under the given parent. */
   addPage?: (parentId: string, payload: CreatePagePayload) => Promise<CreatePageResponse>;
+  /** Create a database from a library template under the given parent; resolves to its view id. */
+  addPageFromTemplate?: (parentId: string, template: { templateId: string; name?: string }) => Promise<string>;
+  /** Create a document template's page tree under the given parent; resolves to the root view id. */
+  addDocumentFromTemplate?: (parentId: string, template: { templateId: string; name?: string }) => Promise<string>;
   /** Open a view in a modal overlay (used by inline database creation). */
   openPageModal?: (viewId: string) => void;
   /** Soft-delete a page (move to trash). */
@@ -153,6 +157,10 @@ export interface AppOperationsContextType {
   previewCollabVersion?: (viewId: string, versionId: string, collabType: Types) => Promise<YDoc | undefined>;
   /** Revert a document to a specific version. Hook: `useCollabHistory()`. */
   revertCollabVersion?: (viewId: string, versionId: string) => Promise<void>;
+  /** Create a named snapshot of the document's current state. Hook: `useCollabHistory()`. */
+  createCollabVersion?: (viewId: string, name: string, ySnapshot: Uint8Array) => Promise<string>;
+  /** Tombstone-delete a version from history. Hook: `useCollabHistory()`. */
+  deleteCollabVersion?: (viewId: string, versionId: string) => Promise<void>;
 
   // ── Workspace ──────────────────────────────────────────────────────
   /** Switch the active workspace. */

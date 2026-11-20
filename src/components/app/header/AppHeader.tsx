@@ -1,5 +1,6 @@
 import { IconButton } from '@mui/material';
 import { lazy, memo, Suspense, useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 
 import { UIVariant } from '@/application/types';
 import { ReactComponent as DoubleArrowRight } from '@/assets/icons/double_arrow_right.svg';
@@ -10,6 +11,7 @@ import BreadcrumbSkeleton from '@/components/_shared/skeleton/BreadcrumbSkeleton
 import { useAppRendered, useToView, useBreadcrumb } from '@/components/app/app.hooks';
 import LockedBadge from '@/components/app/header/LockedBadge';
 import Recent from '@/components/app/recent/Recent';
+import { useNarrowViewport } from '@/utils/viewport';
 
 const RightMenu = lazy(() => import('@/components/app/header/RightMenu'));
 
@@ -34,7 +36,10 @@ export function AppHeader({ onOpenDrawer, openDrawer, onCloseDrawer }: AppHeader
 
   const crumbs = useBreadcrumb();
 
-  const displayMenuButton = !openDrawer && window.innerWidth >= 480;
+  // Phones get the button too: it is the only way to reach other pages, search and settings there.
+  const displayMenuButton = !openDrawer;
+  const narrow = useNarrowViewport();
+  const { t } = useTranslation();
 
   const toView = useToView();
   const rendered = useAppRendered();
@@ -49,7 +54,7 @@ export function AppHeader({ onOpenDrawer, openDrawer, onCloseDrawer }: AppHeader
         height: HEADER_HEIGHT,
         minHeight: HEADER_HEIGHT,
       }}
-      className={'appflowy-top-bar sticky top-0 z-[100] flex transform-gpu px-5'}
+      className={'appflowy-top-bar sticky top-0 z-[100] flex transform-gpu px-5 max-md:px-2'}
     >
       <div className={'flex w-full items-center justify-between gap-4 overflow-hidden'}>
         {displayMenuButton && (
@@ -64,6 +69,9 @@ export function AppHeader({ onOpenDrawer, openDrawer, onCloseDrawer }: AppHeader
           >
             <IconButton
               size={'small'}
+              aria-label={t('sideBar.openSidebar', { defaultValue: 'Open sidebar' })}
+              data-testid={'open-sidebar-button'}
+              className={narrow ? '!h-10 !w-10 shrink-0' : undefined}
               {...{
                 onMouseEnter: debounceOpenPopover,
                 onMouseLeave: debounceClosePopover,

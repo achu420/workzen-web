@@ -10,7 +10,6 @@ import { ChatRequest } from '@/components/chat/request/chat-request';
 import { useCurrentUser } from '@/components/main/app.hooks';
 import { getAxiosInstance } from '@/application/services/js-services/http';
 import { getPlatform } from '@/utils/platform';
-import { downloadPage } from '@/utils/url';
 
 export function AIChat({ chatId, onRendered }: { chatId: string; onRendered?: () => void }) {
   const workspaceId = useCurrentWorkspaceId();
@@ -136,19 +135,9 @@ export function AIChat({ chatId, onRendered }: { chatId: string; onRendered?: ()
             <div className={'mb-2 text-base'}>{`Chat listings only. For full chat features:`}</div>
             <ul className={'px-2 text-text-secondary'}>
               <li>• Use desktop browser</li>
-              <li>{`• Download AppFlowy's mobile app`}</li>
             </ul>
           </DialogContent>
           <DialogActions className={'flex w-full items-center justify-center gap-2 p-4'}>
-            <Button
-              variant={'contained'}
-              className={'flex-1'}
-              onClick={() => {
-                window.open(downloadPage);
-              }}
-            >
-              {'Get the App'}
-            </Button>
             <Button
               className={'flex-1'}
               variant={'outlined'}

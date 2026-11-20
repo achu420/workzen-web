@@ -34,4 +34,19 @@ describe('SpaceList', () => {
     expect(screen.getByText('No spaces available.')).toBeTruthy();
     expect(screen.queryByRole('alert')).toBeNull();
   });
+
+  it('does not crash when a space entry is missing its name', () => {
+    expect(() =>
+      render(
+        <SpaceList
+          value={''}
+          spaceList={[
+            // @ts-expect-error intentionally malformed input, as could reach this
+            // component via a non-space outline entry (see NewPage.tsx filtering).
+            { id: 'space-without-name', extra: '{}', isPrivate: false },
+          ]}
+        />
+      )
+    ).not.toThrow();
+  });
 });

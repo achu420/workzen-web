@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 
-import { ReactComponent as Logo } from '@/assets/icons/logo.svg';
+import { ReactComponent as Logo } from '@/assets/icons/workzen-symbol.svg';
 import { useMessagesHandlerContext } from '@/components/chat/provider/messages-handler-provider';
 import { User } from '@/components/chat/types';
 import { Button } from '@/components/ui/button';

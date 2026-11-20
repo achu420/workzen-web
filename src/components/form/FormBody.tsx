@@ -26,7 +26,7 @@ import {
   PublicQuestion,
   resolveFormDisplayTitle,
 } from '@/application/types/form';
-import { ReactComponent as AppFlowyLogo } from '@/assets/icons/appflowy.svg';
+import { ReactComponent as AppFlowyLogo } from '@/assets/icons/workzen-logo.svg';
 import { Button } from '@/components/ui/button';
 
 import { FormQuestion } from './FormQuestion';
@@ -301,20 +301,17 @@ export function FormBody({
       </div>
 
       <p className='pt-6 text-xs text-text-caption'>
-        Never submit sensitive personal information, like passwords, through AppFlowy Forms.
+        Never submit sensitive personal information, like passwords, through Workzen Forms.
       </p>
 
       {!previewMode && !schema.hide_branding ? (
         <footer data-testid='public-form-branding' className='flex justify-center pt-2'>
-          <a
-            href='https://appflowy.com'
-            target='_blank'
-            rel='noopener noreferrer'
-            aria-label='AppFlowy'
+          <span
+            aria-label='Workzen'
             className='text-text-caption opacity-50 transition-opacity hover:opacity-75'
           >
             <AppFlowyLogo className='w-[88px]' aria-hidden />
-          </a>
+          </span>
         </footer>
       ) : null}
     </div>

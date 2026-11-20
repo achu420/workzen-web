@@ -32,6 +32,17 @@ export interface ServerInfo {
   /** Database aggregate snapshots and the complete web history contract. Absent means disabled. */
   enable_database_history?: boolean;
   /**
+   * The database blob/diff bulk-row endpoint. Only a literal false skips the request (servers without it);
+   * absent keeps the existing behaviour for AppFlowy Cloud and older self-hosted servers.
+   */
+  enable_database_blob_diff?: boolean;
+  /** The per-card change history (GET/POST .../card-history/...). Absent on servers that do not have it. */
+  enable_card_history?: boolean;
+  /** false on servers without workspace groups (this backend): the People settings then show members only. */
+  enable_workspace_groups?: boolean;
+  /** false where pages are not shared one by one (this backend): Share only lists who has access. */
+  enable_page_sharing?: boolean;
+  /**
    * Rollout authorization for the relative_date filter format. Only advertise
    * this after incompatible clients are excluded from the shared data; server
    * support or an advisory desktop upgrade alone does not make writes safe.

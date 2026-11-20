@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { useSearchParams } from 'react-router-dom';
 import { toast } from 'sonner';
 
-import { ReactComponent as Logo } from '@/assets/icons/logo.svg';
+import { ReactComponent as Logo } from '@/assets/icons/workzen-symbol.svg';
 import { AuthService } from '@/application/services/domains';
 import { buildLoginUrl } from '@/application/session/sign_in';
 import { LOGIN_ACTION } from '@/components/login/const';

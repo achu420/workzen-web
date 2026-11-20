@@ -7,6 +7,7 @@ import { ReactComponent as MoreIcon } from '@/assets/icons/more.svg';
 import BreadcrumbItem from '@/components/_shared/breadcrumb/BreadcrumbItem';
 import BreadcrumbMoreModal from '@/components/_shared/breadcrumb/BreadcrumbMoreModal';
 import { getPlatform } from '@/utils/platform';
+import { useNarrowViewport } from '@/utils/viewport';
 
 export interface BreadcrumbProps {
   crumbs: View[];
@@ -16,7 +17,31 @@ export interface BreadcrumbProps {
 
 export function Breadcrumb({ crumbs, toView, variant }: BreadcrumbProps) {
   const [openMore, setOpenMore] = useState(false);
+  const narrow = useNarrowViewport();
   const renderCrumb = useMemo(() => {
+    // On a phone the path does not fit: show where you are, and keep the full path behind the "..." button.
+    if (narrow && crumbs.length > 1) {
+      const current = crumbs[crumbs.length - 1];
+
+      return (
+        <>
+          <div className={'flex shrink-0 items-center text-text-primary'}>
+            <IconButton
+              aria-label={'Show full path'}
+              onClick={() => {
+                setOpenMore(true);
+              }}
+            >
+              <MoreIcon className={'h-5 w-5 shrink-0'} />
+            </IconButton>
+          </div>
+          <div className={'flex min-w-0 items-center gap-2 truncate text-text-primary'}>
+            <BreadcrumbItem variant={variant} toView={toView} crumb={current} disableClick={true} />
+          </div>
+        </>
+      );
+    }
+
     const tailCount = getPlatform().isMobile ? 1 : 2;
 
     if (crumbs.length > tailCount + 1) {
@@ -33,6 +58,7 @@ export function Breadcrumb({ crumbs, toView, variant }: BreadcrumbProps) {
           )}
           <div className={'flex min-w-0 shrink-0 items-center gap-2 truncate text-text-primary'}>
             <IconButton
+              aria-label={'Show full path'}
               onClick={() => {
                 setOpenMore(true);
               }}
@@ -79,7 +105,7 @@ export function Breadcrumb({ crumbs, toView, variant }: BreadcrumbProps) {
         </div>
       );
     });
-  }, [crumbs, toView, variant]);
+  }, [crumbs, narrow, toView, variant]);
 
   return (
     <div

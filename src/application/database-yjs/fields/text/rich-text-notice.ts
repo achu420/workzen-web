@@ -16,7 +16,7 @@ export function notifyRichTextNewer() {
   notify.error(
     t('grid.row.richTextRequiresNewerVersion', {
       defaultValue:
-        'This text was formatted in a newer version of AppFlowy. Update AppFlowy (refresh this page) to edit it.',
+        'This text was formatted in a newer version of Workzen. Update Workzen (refresh this page) to edit it.',
     })
   );
 }

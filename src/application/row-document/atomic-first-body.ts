@@ -398,7 +398,11 @@ export async function prepareAtomicRowFirstBody(input: {
           deadline,
         });
 
-        if (input.requiresInitialRowSnapshot) {
+        // A hidden template row that has not been committed to the server
+        // yet (see the comment in waitForRowDocumentSource) has no existing
+        // snapshot to make durable -- it is created, body and all, by this
+        // same atomic request.
+        if (input.requiresInitialRowSnapshot && row) {
           await ensureDurableRowSource(identity, row, {
             owner: currentOwner,
             restoreId,

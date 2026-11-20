@@ -28,14 +28,15 @@ describe('FormBody typed-answer validation', () => {
     expect(screen.queryByTestId('public-form-respondent-status')).toBeNull();
   });
 
-  it('shows AppFlowy branding only when the shared-form schema permits it', () => {
+  it('shows Workzen branding only when the shared-form schema permits it', () => {
     const { rerender } = render(<FormBody token='public-token' schema={schemaFor()} />);
     const body = screen.getByTestId('public-form-body');
     const branding = screen.getByTestId('public-form-branding');
-    const logoLink = screen.getByRole('link', { name: 'AppFlowy' });
+    const logo = screen.getByLabelText('Workzen');
 
     expect(body.lastElementChild).toBe(branding);
-    expect(logoLink.getAttribute('href')).toBe('https://appflowy.com');
+    expect(branding.contains(logo)).toBe(true);
+    expect(screen.queryByRole('link', { name: 'Workzen' })).toBeNull();
 
     rerender(<FormBody token='public-token' schema={{ ...schemaFor(), hide_branding: true }} />);
     expect(screen.queryByTestId('public-form-branding')).toBeNull();

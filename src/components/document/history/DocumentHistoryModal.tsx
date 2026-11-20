@@ -4,6 +4,7 @@ import * as Y from 'yjs';
 
 import { CollabVersionRecord } from '@/application/collab-version.type';
 import { Types, ViewIcon } from '@/application/types';
+import { notify } from '@/components/_shared/notify';
 import ComponentLoading from '@/components/_shared/progress/ComponentLoading';
 import { VersionHistoryDialog, VersionHistoryEmptyState } from '@/components/_shared/version-history';
 import {
@@ -93,7 +94,13 @@ export function DocumentHistoryModal({
   };
 }) {
   const { loadViewMeta, createRow, getViewIdFromDatabaseId, loadView, bindViewSync } = useAppOperations();
-  const { getCollabHistory, previewCollabVersion, revertCollabVersion } = useCollabHistory();
+  const {
+    getCollabHistory,
+    previewCollabVersion,
+    revertCollabVersion,
+    createCollabVersion,
+    deleteCollabVersion,
+  } = useCollabHistory();
   const getSubscriptions = useGetSubscriptions();
   const eventEmitter = useEventEmitter();
   const getMentionUser = useGetMentionUser();
@@ -111,6 +118,8 @@ export function DocumentHistoryModal({
   const previewYDocRef = useRef<Map<string, Y.Doc>>(new Map());
   const [activeDoc, setActiveDoc] = useState<Y.Doc | null>(null);
   const [isRestoring, setIsRestoring] = useState(false);
+  const [isCreatingSnapshot, setIsCreatingSnapshot] = useState(false);
+  const [isDeletingVersion, setIsDeletingVersion] = useState(false);
   const selectedVersionIdRef = useRef(selectedVersionId);
   const activeViewIdRef = useRef(viewId);
   const versionsRef = useRef(versions);
@@ -225,6 +234,64 @@ export function DocumentHistoryModal({
     }
   }, [viewId, revertCollabVersion, refreshVersions, onOpenChange]);
 
+  const handleCreateSnapshot = useCallback(
+    async (name: string): Promise<boolean> => {
+      if (!viewId || !createCollabVersion || !loadView) {
+        return false;
+      }
+
+      setIsCreatingSnapshot(true);
+      setError(null);
+      try {
+        // Snapshot the document's current live state, not the previewed
+        // historical version. loadView returns the cached/sync-bound Y.Doc
+        // for this view without altering what's rendered in the preview pane.
+        const doc = await loadView(viewId);
+        const snapshot = Y.encodeStateAsUpdate(doc);
+
+        await createCollabVersion(viewId, name, snapshot);
+        Log.debug('[Version] Created named snapshot', { viewId, name });
+        notify.success(t('versionHistory.createSnapshotSuccess'));
+        await refreshVersions();
+        return true;
+      } catch (err) {
+        const message = err instanceof Error ? err.message : String(err);
+
+        Log.error('Failed to create document snapshot', err);
+        notify.error(`${t('versionHistory.createSnapshotFailed')}: ${message}`);
+        return false;
+      } finally {
+        setIsCreatingSnapshot(false);
+      }
+    },
+    [viewId, createCollabVersion, loadView, refreshVersions, t]
+  );
+
+  const handleDeleteVersion = useCallback(
+    async (versionId: string) => {
+      if (!viewId || !deleteCollabVersion || isDeletingVersion) {
+        return;
+      }
+
+      setIsDeletingVersion(true);
+      setError(null);
+      try {
+        await deleteCollabVersion(viewId, versionId);
+        Log.debug('[Version] Deleted version', { viewId, versionId });
+        notify.success(t('versionHistory.deleteVersionSuccess'));
+        await refreshVersions();
+      } catch (err) {
+        const message = err instanceof Error ? err.message : String(err);
+
+        Log.error('Failed to delete document version', err);
+        notify.error(`${t('versionHistory.deleteVersionFailed')}: ${message}`);
+      } finally {
+        setIsDeletingVersion(false);
+      }
+    },
+    [viewId, deleteCollabVersion, isDeletingVersion, refreshVersions, t]
+  );
+
   const handleClose = useCallback(() => onOpenChange(false), [onOpenChange]);
 
   useEffect(() => {
@@ -332,6 +399,10 @@ export function DocumentHistoryModal({
           isRestoring={isRestoring}
           onClose={handleClose}
           isPro={isPro}
+          onCreateSnapshot={createCollabVersion ? handleCreateSnapshot : undefined}
+          isCreatingSnapshot={isCreatingSnapshot}
+          onDeleteVersion={deleteCollabVersion ? handleDeleteVersion : undefined}
+          isDeletingVersion={isDeletingVersion}
         />
       }
     >

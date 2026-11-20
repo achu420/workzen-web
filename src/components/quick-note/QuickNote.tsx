@@ -461,6 +461,7 @@ export function QuickNote() {
       >
         <IconButton
           ref={buttonRef}
+          aria-label={t('quickNote.quickNotes')}
           size={'small'}
           onClick={async (e) => {
             e.currentTarget.blur();

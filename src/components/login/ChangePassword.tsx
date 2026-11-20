@@ -7,7 +7,7 @@ import { toast } from 'sonner';
 import { AuthService } from '@/application/services/domains';
 import { isPublicFormRedirectUrl } from '@/application/session/sign_in';
 import { invalidToken } from '@/application/session/token';
-import { ReactComponent as Logo } from '@/assets/icons/logo.svg';
+import { ReactComponent as Logo } from '@/assets/icons/workzen-symbol.svg';
 import { getPasswordErrors } from '@/components/login/password-validation';
 import { useIsAuthenticatedOptional } from '@/components/main/app.hooks';
 import { Button } from '@/components/ui/button';

@@ -19,6 +19,7 @@ function SideBarBottom() {
           <Tooltip title={t('template.label')}>
             <IconButton
               size={'small'}
+              aria-label={t('template.label')}
               onClick={() => {
                 window.open(`${window.location.origin}/templates`, '_blank');
               }}
@@ -31,6 +32,7 @@ function SideBarBottom() {
         <Tooltip title={t('trash.text')}>
           <IconButton
             data-testid="sidebar-trash-button"
+            aria-label={t('trash.text')}
             size={'small'}
             onClick={() => {
               navigate('/app/trash');

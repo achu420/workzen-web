@@ -1,5 +1,5 @@
 import { UserWorkspaceInfo, Workspace } from '@/application/types';
-import { ReactComponent as AppFlowyLogo } from '@/assets/icons/appflowy.svg';
+import { ReactComponent as AppFlowyLogo } from '@/assets/icons/workzen-logo.svg';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Progress } from '@/components/ui/progress';
 

@@ -4,7 +4,7 @@ import React, { useCallback, useMemo } from 'react';
 import { HEADER_HEIGHT } from '@/application/constants';
 import { UIVariant } from '@/application/types';
 import { ReactComponent as MenuIcon } from '@/assets/icons/double_arrow_right.svg';
-import { ReactComponent as Logo } from '@/assets/icons/logo.svg';
+import { ReactComponent as Logo } from '@/assets/icons/workzen-symbol.svg';
 import { ReactComponent as MoreIcon } from '@/assets/icons/more.svg';
 import { Breadcrumb } from '@/components/_shared/breadcrumb';
 import { withAppBreadcrumb } from '@/components/_shared/breadcrumb/withAppBreadcrumb';
@@ -13,7 +13,6 @@ import { MobileDrawer } from '@/components/_shared/mobile-drawer';
 import MobileFolder from '@/components/_shared/mobile-topbar/MobileFolder';
 import PublishMobileFolder from '@/components/_shared/mobile-topbar/PublishMobileFolder';
 import MoreActionsContent from '@/components/_shared/more-actions/MoreActionsContent';
-import { openOrDownload } from '@/utils/open_schema';
 import { getPlatform } from '@/utils/platform';
 
 const PublishBreadcrumb = withPublishBreadcrumb(Breadcrumb);
@@ -82,7 +81,7 @@ function MobileTopBar({ variant }: { variant?: UIVariant }) {
 
       {variant === UIVariant.Publish ? <PublishBreadcrumb /> : <AppBreadcrumb />}
       <div className={'flex items-center gap-4'}>
-        <button onClick={() => openOrDownload()}>
+        <button onClick={() => window.open('/app', '_self')}>
           <Logo className={'h-5 w-5'} />
         </button>
         <MobileDrawer

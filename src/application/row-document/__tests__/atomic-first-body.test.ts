@@ -588,6 +588,12 @@ describe('atomic row-page activation', () => {
     'rejects %s changes in source readiness before POST',
     async (failure) => {
       const f = setup();
+
+      // A version change is only detectable once a local version is actually
+      // known (see row-source-readiness.ts); give this case one so the
+      // restore's divergent collab_version is a genuine, detected mismatch
+      // rather than relying on an always-unknown local version.
+      if (failure === 'restore') f.input.databaseDoc.version = 'generation-1';
       const session = await prepareAtomicRowFirstBody(f.input);
       const submit = jest.fn();
       const originalRead = (atomic.atomicRead as jest.Mock).getMockImplementation()!;
@@ -705,7 +711,10 @@ describe('atomic row-page activation', () => {
     const encoded = state(remoteDocument);
 
     expect(() => decodeCurrentRowPageCollab({ ...encoded, object_id: 'other' }, ids.document)).toThrow();
-    expect(() => decodeCurrentRowPageCollab({ ...encoded, collab_version: 'other' }, ids.document, null)).toThrow();
+    // null/undefined both mean "no local version adopted yet" and are not
+    // a conflict by themselves (see row-source-readiness.ts); only a
+    // mismatch against an actually-known local version must reject.
+    expect(() => decodeCurrentRowPageCollab({ ...encoded, collab_version: 'other' }, ids.document, 'known-version')).toThrow();
     expect(() => decodeCurrentRowPageCollab({ ...encoded, doc_state: [500] }, ids.document)).toThrow();
     expect(() => decodeCurrentRowPageCollab({ ...encoded, version: 7 }, ids.document)).toThrow();
   });

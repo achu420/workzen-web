@@ -3,7 +3,7 @@ set -e
 
 # Print version banner
 echo "════════════════════════════════════════════════════════════════════"
-echo "  AppFlowy Web v${APP_VERSION:-dev}"
+echo "  Workzen Web v${APP_VERSION:-dev}"
 echo "════════════════════════════════════════════════════════════════════"
 echo ""
 

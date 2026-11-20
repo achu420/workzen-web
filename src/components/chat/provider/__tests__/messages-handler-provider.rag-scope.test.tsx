@@ -32,7 +32,9 @@ const requestInstance = {
     author: { author_type: AuthorType.Human, author_uuid: 'user-id' },
   }),
   getCurrentView: jest.fn().mockResolvedValue(undefined),
+  updateViewName: jest.fn().mockResolvedValue(undefined),
 };
+let chatScope: unknown;
 
 jest.mock('sonner', () => ({
   toast: { error: (...args: unknown[]) => toastError(...args) },
@@ -41,6 +43,7 @@ jest.mock('sonner', () => ({
 jest.mock('@/components/chat/chat/context', () => ({
   useChatContext: () => ({
     chatId: 'chat-id',
+    scope: chatScope,
     requestInstance,
     currentUser: { uuid: 'user-id' },
   }),
@@ -105,6 +108,7 @@ describe('MessagesHandlerProvider RAG scope readiness', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     jest.useFakeTimers();
+    chatScope = undefined;
     waitForPendingChatSettings.mockResolvedValue(true);
   });
 
@@ -240,5 +244,40 @@ describe('MessagesHandlerProvider RAG scope readiness', () => {
     });
 
     expect(requestInstance.submitQuestion).toHaveBeenCalledTimes(1);
+  });
+
+  it('renames a normal chat page from its first question but never touches a page for a card chat', async () => {
+    waitUntilReady.mockResolvedValue(true);
+    requestInstance.getCurrentView.mockResolvedValue({ view_id: 'page-1' });
+    const { unmount } = render(
+      <MessagesHandlerProvider>
+        <ContextProbe />
+      </MessagesHandlerProvider>
+    );
+
+    await act(async () => {
+      await messagesContext.submitQuestion('Name my chat');
+    });
+    await act(async () => Promise.resolve());
+    expect(requestInstance.getCurrentView).toHaveBeenCalledTimes(1);
+    unmount();
+
+    jest.clearAllMocks();
+    waitUntilReady.mockResolvedValue(true);
+    waitForPendingChatSettings.mockResolvedValue(true);
+    chatScope = { type: 'card', databaseId: 'db-1', rowId: 'row-1' };
+    render(
+      <MessagesHandlerProvider>
+        <ContextProbe />
+      </MessagesHandlerProvider>
+    );
+
+    await act(async () => {
+      await messagesContext.submitQuestion('What is the status?');
+    });
+    await act(async () => Promise.resolve());
+    expect(requestInstance.submitQuestion).toHaveBeenCalledTimes(1);
+    expect(requestInstance.getCurrentView).not.toHaveBeenCalled();
+    expect(requestInstance.updateViewName).not.toHaveBeenCalled();
   });
 });

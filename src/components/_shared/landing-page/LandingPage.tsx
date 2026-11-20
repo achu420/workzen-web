@@ -2,7 +2,7 @@ import { HTMLAttributes, ReactNode, useCallback, useEffect, useMemo } from 'reac
 import { useTranslation } from 'react-i18next';
 
 import { Workspace } from '@/application/types';
-import { ReactComponent as AppFlowyLogo } from '@/assets/icons/appflowy.svg';
+import { ReactComponent as AppFlowyLogo } from '@/assets/icons/workzen-logo.svg';
 import LandingFooter from '@/components/_shared/landing-page/LandingFooter';
 import { useCurrentUserOptional, useIsAuthenticatedOptional } from '@/components/main/app.hooks';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';

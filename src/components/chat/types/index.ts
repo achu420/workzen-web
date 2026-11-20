@@ -12,7 +12,19 @@ export * from './writer';
 export * from '@/components/chat/request';
 export * from '@/components/chat/writer';
 
+/** A chat that is bound to a single database card instead of a page in the sidebar. */
+export interface CardChatScope {
+  type: 'card';
+  databaseId: string;
+  rowId: string;
+  rowDocumentId?: string;
+}
+
 export interface ChatProps {
+  /** When set, the chat only talks about this card and never touches pages, rag scope or the outline. */
+  scope?: CardChatScope;
+  /** Tighter paddings for use inside a card. */
+  compact?: boolean;
   workspaceId: string;
   chatId: string;
   requestInstance: ChatRequest;

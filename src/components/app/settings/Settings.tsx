@@ -12,8 +12,16 @@ import { ProfilePanel } from '@/components/app/settings/ProfilePanel';
 import SettingMenu from '@/components/app/settings/SettingMenu';
 import { useCurrentUserOptional } from '@/components/main/app.hooks';
 import { Progress } from '@/components/ui/progress';
+import { canUseAgentAccess } from '@/utils/agent-access';
+import { canManageWorkspaceAI } from '@/utils/ai-settings';
 import { canManageWorkspaceBilling } from '@/utils/subscription';
 
+const AgentAccessPanel = lazy(() =>
+  import('@/components/app/settings/AgentAccessPanel').then((module) => ({ default: module.AgentAccessPanel }))
+);
+const AISettingsPanel = lazy(() =>
+  import('@/components/app/settings/AISettingsPanel').then((module) => ({ default: module.AISettingsPanel }))
+);
 const ConnectionsPanel = lazy(() =>
   import('@/components/app/settings/ConnectionsPanel').then((module) => ({ default: module.ConnectionsPanel }))
 );
@@ -45,6 +53,21 @@ export function SettingsDialog({ open, onClose, onRequestOpen }: SettingsDialogP
   );
   // Billing exists only on the official cloud, and only the owner can change a workspace's plan.
   const showBilling = canManageWorkspaceBilling(currentWorkspace, currentUser?.uid, isOfficialHosted);
+
+  const showAI = canManageWorkspaceAI(currentWorkspace, currentUser?.uid);
+  const showAgentAccess = canUseAgentAccess(currentWorkspace);
+
+  useEffect(() => {
+    if (!showAgentAccess && selectedItem === SettingMenuItem.AGENT_ACCESS) {
+      setSelectedItem(SettingMenuItem.ACCOUNT);
+    }
+  }, [selectedItem, showAgentAccess]);
+
+  useEffect(() => {
+    if (!showAI && selectedItem === SettingMenuItem.AI) {
+      setSelectedItem(SettingMenuItem.ACCOUNT);
+    }
+  }, [selectedItem, showAI]);
 
   useEffect(() => {
     if (!showBilling && (selectedItem === SettingMenuItem.PLAN || selectedItem === SettingMenuItem.BILLING)) {
@@ -86,7 +109,13 @@ export function SettingsDialog({ open, onClose, onRequestOpen }: SettingsDialogP
       onClose={onClose}
       PaperProps={{ 'data-testid': 'settings-dialog' }}
     >
-      <SettingMenu onSelectItem={setSelectedItem} selectedItem={selectedItem} showBilling={showBilling} />
+      <SettingMenu
+        onSelectItem={setSelectedItem}
+        selectedItem={selectedItem}
+        showBilling={showBilling}
+        showAI={showAI}
+        showAgentAccess={showAgentAccess}
+      />
       <div className='flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden'>
         {selectedItem === SettingMenuItem.ACCOUNT && <AccountAppPanel />}
         {selectedItem === SettingMenuItem.PROFILE && <ProfilePanel />}
@@ -105,6 +134,16 @@ export function SettingsDialog({ open, onClose, onRequestOpen }: SettingsDialogP
             }
           >
             <ConnectionsPanel key={workspaceId} workspaceId={workspaceId} />
+          </Suspense>
+        )}
+        {open && showAI && selectedItem === SettingMenuItem.AI && workspaceId && (
+          <Suspense fallback={<PanelFallback label={t('settings.aiProvider.menuLabel', { defaultValue: 'AI' })} />}>
+            <AISettingsPanel key={workspaceId} workspaceId={workspaceId} />
+          </Suspense>
+        )}
+        {open && showAgentAccess && selectedItem === SettingMenuItem.AGENT_ACCESS && workspaceId && (
+          <Suspense fallback={<PanelFallback label={t('settings.agentAccess.menuLabel', { defaultValue: 'Agent access (MCP)' })} />}>
+            <AgentAccessPanel key={workspaceId} workspaceId={workspaceId} />
           </Suspense>
         )}
         {open && showBilling && selectedItem === SettingMenuItem.PLAN && workspaceId && (

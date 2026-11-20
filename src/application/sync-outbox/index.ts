@@ -12,7 +12,12 @@ import { Log } from '@/utils/log';
 // UpdateFlags.Lib0v1 in sync-protocol.ts.
 const FLAGS_LIB0V1 = 0;
 
-export type OutboxSender = (message: messages.IMessage) => void;
+// Task 76: `send` may return a Promise that resolves once the message has
+// actually been transmitted (not merely scheduled) -- the drain loop awaits
+// it so a dependent update can never be flushed ahead of a rebind its own
+// `send` call is still waiting on. `broadcast`/`sendBestEffort` remain
+// fire-and-forget; a `void`-returning implementation is still valid here.
+export type OutboxSender = (message: messages.IMessage) => void | Promise<void>;
 
 export type OutboxReady = () => boolean;
 
@@ -1558,7 +1563,7 @@ async function drainObjectWhileReady(objectId: string): Promise<void> {
     if (!config.isReady()) return;
 
     try {
-      config.send(message);
+      await config.send(message);
     } catch (error) {
       Log.warn('[outbox] send failed; leaving records queued', { objectId, error });
       return;

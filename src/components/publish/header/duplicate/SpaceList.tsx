@@ -37,17 +37,18 @@ function SpaceList({ loading, error, spaceList, value, onChange, onRetry, title 
   const renderSpace = useCallback(
     (space: SpaceView) => {
       const extraObj = getExtraObj(space.extra || '');
+      const spaceName = typeof space.name === 'string' ? space.name : '';
 
       return (
         <div className={'flex items-center gap-[10px] overflow-hidden text-sm'}>
           <SpaceIcon
             value={extraObj.space_icon || ''}
-            char={extraObj.space_icon ? undefined : space.name.slice(0, 1)}
+            char={extraObj.space_icon ? undefined : spaceName.slice(0, 1)}
             bgColor={extraObj.space_icon_color}
             className={'icon h-5 w-5'}
           />
           <div className={'flex flex-1 items-center gap-2 truncate'}>
-            {space.name}
+            {spaceName}
             {space.isPrivate && <LockSvg className={'text-icon-primary'} />}
           </div>
         </div>

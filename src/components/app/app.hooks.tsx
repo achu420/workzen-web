@@ -454,7 +454,7 @@ export function usePublishing() {
   );
 }
 
-/** Memoized `{ getCollabHistory, previewCollabVersion, revertCollabVersion }`. For version history UI. */
+/** Memoized `{ getCollabHistory, previewCollabVersion, revertCollabVersion, createCollabVersion, deleteCollabVersion }`. For version history UI. */
 export function useCollabHistory() {
   const context = useContext(AppOperationsContext);
 
@@ -467,8 +467,16 @@ export function useCollabHistory() {
       getCollabHistory: context.getCollabHistory,
       previewCollabVersion: context.previewCollabVersion,
       revertCollabVersion: context.revertCollabVersion,
+      createCollabVersion: context.createCollabVersion,
+      deleteCollabVersion: context.deleteCollabVersion,
     }),
-    [context.getCollabHistory, context.previewCollabVersion, context.revertCollabVersion]
+    [
+      context.getCollabHistory,
+      context.previewCollabVersion,
+      context.revertCollabVersion,
+      context.createCollabVersion,
+      context.deleteCollabVersion,
+    ]
   );
 }
 

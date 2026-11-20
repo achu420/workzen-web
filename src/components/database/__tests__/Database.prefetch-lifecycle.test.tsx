@@ -10,6 +10,7 @@ import type { DatabaseContextState } from '@/application/database-yjs';
 import { getCachedRowDoc, openRowDoc } from '@/application/services/js-services/cache';
 import { DatabaseViewLayout, UIVariant, YDoc, YjsDatabaseKey, YjsEditorKey } from '@/application/types';
 import Database, { Database2Props } from '@/components/database/Database';
+import { SERVER_INFO_LOADING, updateServerInfo } from '@/utils/server-info';
 
 const mockSeedLoadPromises: Array<Promise<YDoc | undefined>> = [];
 const mockEnsureRowPromises: Array<Promise<YDoc | undefined> | void> = [];
@@ -1253,6 +1254,26 @@ describe('Database blob prefetch lifecycle', () => {
     seedShell.destroy();
     unhydratedCanonicalRowDoc.destroy();
     hydratedCanonicalRowDoc.destroy();
+  });
+
+  it('does not request the bulk row endpoint from a server that says it has none (no 404 on every open)', async () => {
+    const serverUrl = 'https://test.appflowy.cloud';
+    const doc = createDatabaseDoc('database-id');
+
+    updateServerInfo(serverUrl, { status: 'available', info: { enable_page_history: true, enable_database_blob_diff: false } });
+    mockedPrefetch.mockClear();
+    const { unmount } = render(<Database {...databaseProps(doc)} />);
+
+    try {
+      await act(async () => {
+        await requestEnsureRow();
+      });
+      expect(mockedPrefetch).not.toHaveBeenCalled();
+    } finally {
+      updateServerInfo(serverUrl, SERVER_INFO_LOADING);
+      unmount();
+      doc.destroy();
+    }
   });
 
   it('keeps hydrated snapshot rows local in a read-only database', async () => {

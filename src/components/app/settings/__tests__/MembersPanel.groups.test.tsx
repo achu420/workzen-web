@@ -3,6 +3,8 @@ import { toast } from 'sonner';
 
 import { Role, WorkspaceGroup, WorkspaceMember } from '@/application/types';
 import { MembersPanel } from '@/components/app/settings/MembersPanel';
+import { getConfigValue } from '@/utils/runtime-config';
+import { SERVER_INFO_LOADING, updateServerInfo } from '@/utils/server-info';
 
 import type { ReactNode } from 'react';
 
@@ -157,13 +159,26 @@ describe('MembersPanel workspace group parity', () => {
     mockRemoveWorkspaceGroupMember.mockResolvedValue(undefined);
   });
 
-  it('links the People help action to the AppFlowy guide', async () => {
+  it('shows only Members, and never asks for groups, on a server that has none', async () => {
+    const serverUrl = getConfigValue('APPFLOWY_BASE_URL', 'https://test.appflowy.cloud');
+
+    updateServerInfo(serverUrl, { status: 'available', info: { enable_workspace_groups: false } } as never);
+    try {
+      render(<MembersPanel />);
+      await waitFor(() => expect(mockGetMembers).toHaveBeenCalled());
+
+      expect(screen.queryByRole('tab', { name: /settings\.appearance\.people\.groupsTab/ })).toBeNull();
+      expect(screen.getByRole('tab', { name: /settings\.appearance\.people\.membersTab/ })).toBeTruthy();
+      expect(mockGetWorkspaceGroups).not.toHaveBeenCalled();
+    } finally {
+      updateServerInfo(serverUrl, SERVER_INFO_LOADING);
+    }
+  });
+
+  it('does not link the People description to an upstream guide', async () => {
     await renderGroupsPanel();
 
-    const learnMore = screen.getByRole('link', { name: 'workspace.learnMore' });
-
-    expect(learnMore.getAttribute('href')).toBe('https://appflowy.com/guide/getting-started-with-appflowy');
-    expect(learnMore.getAttribute('target')).toBe('_blank');
+    expect(screen.queryByRole('link', { name: 'workspace.learnMore' })).toBeNull();
   });
 
   it('uses the Members table typography and spacing for group summaries', async () => {

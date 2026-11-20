@@ -6,9 +6,9 @@ import { indexPath } from './config';
 import { logger } from './logger';
 import { type PublishErrorPayload } from './publish-error';
 
-const DEFAULT_DESCRIPTION = 'Write, share, and publish docs quickly on AppFlowy.\nGet started for free.';
+const DEFAULT_DESCRIPTION = 'Write, share, and publish docs quickly on Workzen.';
 const DEFAULT_IMAGE = '/og-image.png';
-const DEFAULT_FAVICON = '/appflowy.ico';
+const DEFAULT_FAVICON = '/favicon.svg';
 
 const MARKETING_META: Record<
   string,
@@ -18,12 +18,12 @@ const MARKETING_META: Record<
   }
 > = {
   '/after-payment': {
-    title: 'Payment Success | AppFlowy',
-    description: 'Payment success on AppFlowy',
+    title: 'Payment Success | Workzen',
+    description: 'Payment success on Workzen',
   },
   '/login': {
-    title: 'Login | AppFlowy',
-    description: 'Login to AppFlowy',
+    title: 'Login | Workzen',
+    description: 'Login to Workzen',
   },
 };
 
@@ -157,7 +157,7 @@ export const renderPublishPage = ({
   // Only server-rendered pages get a content-derived description; every other
   // page keeps the default so its response stays exactly as before SSR.
   const description = ssr?.description ?? DEFAULT_DESCRIPTION;
-  let title = 'AppFlowy';
+  let title = 'Workzen';
   const url = `https://${hostname ?? ''}${pathname}`;
   let image = DEFAULT_IMAGE;
   let favicon = DEFAULT_FAVICON;
@@ -192,7 +192,7 @@ export const renderPublishPage = ({
         titleList.push('|');
       }
 
-      titleList.push('AppFlowy');
+      titleList.push('Workzen');
       title = titleList.join(' ');
 
       try {
@@ -215,19 +215,24 @@ export const renderPublishPage = ({
 
   $('title').text(title);
   $('link[rel="icon"]').attr('href', favicon);
-  $('link[rel="canonical"]').attr('href', url);
+  // The shell ships no canonical link (it used to point at the upstream site), so add one for this page.
+  if ($('link[rel="canonical"]').length === 0) {
+    $('head').append($('<link>').attr('rel', 'canonical').attr('href', url));
+  } else {
+    $('link[rel="canonical"]').attr('href', url);
+  }
+
   setOrUpdateMetaTag($, 'meta[name="description"]', 'name', description);
   setOrUpdateMetaTag($, 'meta[property="og:title"]', 'property', title);
   setOrUpdateMetaTag($, 'meta[property="og:description"]', 'property', description);
   setOrUpdateMetaTag($, 'meta[property="og:image"]', 'property', image);
   setOrUpdateMetaTag($, 'meta[property="og:url"]', 'property', url);
-  setOrUpdateMetaTag($, 'meta[property="og:site_name"]', 'property', 'AppFlowy');
+  setOrUpdateMetaTag($, 'meta[property="og:site_name"]', 'property', 'Workzen');
   setOrUpdateMetaTag($, 'meta[property="og:type"]', 'property', 'website');
   setOrUpdateMetaTag($, 'meta[name="twitter:card"]', 'name', 'summary_large_image');
   setOrUpdateMetaTag($, 'meta[name="twitter:title"]', 'name', title);
   setOrUpdateMetaTag($, 'meta[name="twitter:description"]', 'name', description);
   setOrUpdateMetaTag($, 'meta[name="twitter:image"]', 'name', image);
-  setOrUpdateMetaTag($, 'meta[name="twitter:site"]', 'name', '@appflowy');
 
   if (publishError) {
     appendPublishErrorScript($, publishError);

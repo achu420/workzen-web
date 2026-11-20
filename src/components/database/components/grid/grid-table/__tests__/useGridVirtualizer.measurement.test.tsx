@@ -39,6 +39,7 @@ jest.mock('@/components/database/grid/useGridContext', () => ({
   useGridContext: () => ({ isGrouped: false, rowResizeStore: { report: jest.fn() } }),
   useGridInteractionActions: () => ({ setHoverRowKey: jest.fn() }),
   useIsGridRowActive: () => false,
+  useIsGridRowSelected: () => false,
 }));
 
 const mockDatabaseRow = new Y.Doc().getMap<Y.Map<string>>('row');

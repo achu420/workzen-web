@@ -241,6 +241,8 @@ export const AppBusinessLayer: FC<AppBusinessLayerProps> = ({ children }) => {
     bindViewSync,
     getCollabHistory,
     previewCollabVersion,
+    createCollabVersion,
+    deleteCollabVersion,
   } = useViewOperations({ loadDatabaseRelations });
 
   // Initialize row operations
@@ -262,6 +264,8 @@ export const AppBusinessLayer: FC<AppBusinessLayerProps> = ({ children }) => {
   // Initialize page operations
   const {
     addPage,
+    addPageFromTemplate,
+    addDocumentFromTemplate,
     deletePage: rawDeletePage,
     duplicatePage,
     updatePage,
@@ -1079,6 +1083,8 @@ export const AppBusinessLayer: FC<AppBusinessLayerProps> = ({ children }) => {
       createRow,
       bindViewSync,
       addPage,
+      addPageFromTemplate,
+      addDocumentFromTemplate,
       deletePage: enhancedDeletePage,
       duplicatePage,
       updatePage,
@@ -1111,6 +1117,8 @@ export const AppBusinessLayer: FC<AppBusinessLayerProps> = ({ children }) => {
       setWordCount,
       getCollabHistory,
       previewCollabVersion,
+      createCollabVersion,
+      deleteCollabVersion,
       revertCollabVersion,
       onChangeWorkspace: authContext.onChangeWorkspace,
     }),
@@ -1121,6 +1129,8 @@ export const AppBusinessLayer: FC<AppBusinessLayerProps> = ({ children }) => {
       createRow,
       bindViewSync,
       addPage,
+      addPageFromTemplate,
+      addDocumentFromTemplate,
       enhancedDeletePage,
       duplicatePage,
       updatePage,
@@ -1153,6 +1163,8 @@ export const AppBusinessLayer: FC<AppBusinessLayerProps> = ({ children }) => {
       setWordCount,
       getCollabHistory,
       previewCollabVersion,
+      createCollabVersion,
+      deleteCollabVersion,
       revertCollabVersion,
       authContext.onChangeWorkspace,
     ]

@@ -579,6 +579,38 @@ export function useViewOperations({
     [currentWorkspaceId]
   );
 
+  const createCollabVersion = useCallback(
+    async (viewId: string, name: string, ySnapshot: Uint8Array) => {
+      if (!currentWorkspaceId) {
+        throw new Error('Workspace not found');
+      }
+
+      try {
+        const versionId = await CollabService.createVersion(currentWorkspaceId, viewId, Types.Document, name, ySnapshot);
+
+        return versionId;
+      } catch (e) {
+        return Promise.reject(e);
+      }
+    },
+    [currentWorkspaceId]
+  );
+
+  const deleteCollabVersion = useCallback(
+    async (viewId: string, versionId: string) => {
+      if (!currentWorkspaceId) {
+        throw new Error('Workspace not found');
+      }
+
+      try {
+        await CollabService.deleteVersion(currentWorkspaceId, viewId, versionId);
+      } catch (e) {
+        return Promise.reject(e);
+      }
+    },
+    [currentWorkspaceId]
+  );
+
   return {
     loadView,
     bindViewSync,
@@ -589,5 +621,7 @@ export function useViewOperations({
     getViewReadOnlyStatus: getViewReadOnlyStatusFromOutline,
     getCollabHistory,
     previewCollabVersion,
+    createCollabVersion,
+    deleteCollabVersion,
   };
 }

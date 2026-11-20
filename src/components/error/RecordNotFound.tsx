@@ -279,19 +279,12 @@ function RecordNotFound({
           </div>
           <div className={'mt-4 whitespace-pre-wrap break-words text-center text-lg text-text-primary opacity-50'}>
             {`We're sorry for inconvenience\n`}
-            Submit an issue on our{' '}
-            <a
-              className={'text-text-action  underline'}
-              href={'https://github.com/AppFlowy-IO/AppFlowy/issues/new?template=bug_report.yaml'}
-            >
-              Github
-            </a>{' '}
-            page that describes your error
+            Please tell your workspace administrator what went wrong
           </div>
         </>
       )}
 
-      <img src={emptyImageSrc} alt={'AppFlowy'} />
+      <img src={emptyImageSrc} alt={'Workzen'} />
     </div>
   );
 }

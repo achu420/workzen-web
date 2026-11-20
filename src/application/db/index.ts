@@ -588,7 +588,14 @@ export async function publishWithDatabaseStorageFence(
   try {
     return await db.transaction('rw', db.collab_custom, async () => {
       if (!isDatabaseStorageFenceCurrent(fence) || !(await matchesDatabaseStorageFence(fence))) return false;
-      publish();
+      // `publish()` applies a Yjs update synchronously, which synchronously
+      // fires collab observers (e.g. the sync-outbox update listener) that
+      // write to tables -- `sync_outbox` -- never declared in this
+      // collab_custom-only transaction. Dexie's ambient-PSD transaction
+      // propagation otherwise sweeps that write into this scope and it
+      // fails with NotFoundError. Escape it the same way the sibling write
+      // path below (`_storeUpdate`) already does for its own continuation.
+      BaseDexie.ignoreTransaction(() => publish());
       return true;
     });
   } catch (error) {

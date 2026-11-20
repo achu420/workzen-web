@@ -6,7 +6,9 @@ import EditorSkeleton from '@/components/_shared/skeleton/EditorSkeleton';
 import TableSkeleton from '@/components/_shared/skeleton/TableSkeleton';
 import { usePreloadRichTextCellEditor } from '@/components/database/components/cell/text/rich-text/load';
 import { DatabaseRowProperties, RowSubDocument } from '@/components/database/components/database-row';
+import { RowAskAI } from '@/components/database/components/database-row/ask-ai/RowAskAI';
 import { RowCommentList } from '@/components/database/components/database-row/comment';
+import { RowHistory } from '@/components/database/components/database-row/row-history/RowHistory';
 import DatabaseRowHeader from '@/components/database/components/header/DatabaseRowHeader';
 import { DatabaseHistoryScope } from '@/components/database/DatabaseHistoryScope';
 import { FeedMembersProvider } from '@/components/database/feed/FeedMembersContext';
@@ -69,6 +71,10 @@ export function DatabaseRow({
               <RowCommentList rowId={rowId} />
             </div>
           </Suspense>
+
+          <RowHistory rowId={rowId} />
+
+          <RowAskAI rowId={rowId} />
 
           <div className={'row-document-divider px-[var(--row-page-inset,96px)] max-sm:px-6'}>
             <Separator />

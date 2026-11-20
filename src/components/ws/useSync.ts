@@ -273,6 +273,18 @@ export const useSync = (
     readyStateRef.current = readyState;
   }, [readyState]);
 
+  // Task 71 fix: a reconnect (any transition away from OPEN) invalidates the
+  // shared `websocket.objectId` slot on the server's new connection. Reset
+  // the client-side mirror of it so the next send for ANY object correctly
+  // re-asserts its own binding rather than assuming the old connection's
+  // state still applies. See the `lastBoundObjectId` field doc in
+  // syncRefs.ts for the full defect this closes.
+  useEffect(() => {
+    if (readyState !== WS_READY_STATE_OPEN) {
+      refs.lastBoundObjectId.current = null;
+    }
+  }, [readyState, refs]);
+
   useEffect(() => {
     const previousReadyState = previousReadyStateRef.current;
 
@@ -286,6 +298,10 @@ export const useSync = (
       return;
     }
 
+    // Each bindSyncContext call below goes through context.emit (Task 71
+    // fix's self-healing wrapper in useSyncContextLifecycle.ts), which
+    // updates refs.lastBoundObjectId itself -- no separate bookkeeping
+    // needed here.
     refs.registeredContexts.current.forEach((context) => bindSyncContext(context));
   }, [readyState, refs]);
 
@@ -302,6 +318,35 @@ export const useSync = (
       }
 
       return context.doc;
+    },
+    [refs]
+  );
+
+  // Task 71 fix: exposed so AppSyncLayer's persistent sync_outbox `send`
+  // callback (which writes directly to the WebSocket, bypassing
+  // `context.emit`'s self-healing wrapper) can re-assert an object's own
+  // SyncRequest binding immediately before its `update` frame, in case a
+  // DIFFERENT object's SyncRequest most recently won the server's single
+  // shared `websocket.objectId` slot for this connection. A no-op when this
+  // object is already the current one. See
+  // docs/TASK71_COLD_START_LIVE_RENDERING_REPORT.md for the evidence.
+  const ensureObjectBoundForSend = useCallback(
+    (objectId: string): Promise<void> | void => {
+      if (refs.lastBoundObjectId.current === objectId) return;
+      const context = refs.registeredContexts.current.get(objectId);
+
+      // No live context means nothing can re-assert this object's SyncRequest, and the
+      // server closes the whole socket (1008) for an update to an unbound object. That
+      // turned a persisted outbox record for a page that is no longer open into a
+      // reconnect loop on every start. Throwing makes the outbox keep the record queued;
+      // it drains once the object is opened and bound again.
+      if (!context) throw new Error(`[outbox] ${objectId} is not bound and has no sync context`);
+
+      // Task 76 fix: propagate the Promise so the caller (AppSyncLayer's
+      // outbox `send`) can await actual SyncRequest transmission before
+      // sending the dependent update, instead of assuming the rebind is
+      // already on the wire by the time this synchronous call returns.
+      return bindSyncContext(context);
     },
     [refs]
   );
@@ -400,6 +445,7 @@ export const useSync = (
       syncAllToServer,
       applyHttpFullSyncResult,
       scheduleDeferredCleanup,
+      ensureObjectBoundForSend,
     }),
     [
       registerSyncContext,
@@ -411,6 +457,7 @@ export const useSync = (
       syncAllToServer,
       applyHttpFullSyncResult,
       scheduleDeferredCleanup,
+      ensureObjectBoundForSend,
     ]
   );
 };

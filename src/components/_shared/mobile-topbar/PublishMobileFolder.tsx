@@ -1,7 +1,7 @@
 import { useNavigate } from 'react-router-dom';
 
 import { usePublishContext } from '@/application/publish';
-import { ReactComponent as AppFlowyLogo } from '@/assets/icons/appflowy.svg';
+import { ReactComponent as AppFlowyLogo } from '@/assets/icons/workzen-logo.svg';
 import { AFScroller } from '@/components/_shared/scroller';
 
 import MobileOutline from 'src/components/_shared/mobile-outline/MobileOutline';

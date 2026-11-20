@@ -17,6 +17,7 @@ const duplicateRow = jest.fn();
 jest.mock('@/application/database-yjs/dispatch', () => ({
   useDuplicateRowDispatch: () => duplicateRow,
   useNewRowDispatch: () => newRow,
+  useTrashAwareDeleteRowsDispatch: () => jest.fn(),
 }));
 
 function createWrapper() {

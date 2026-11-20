@@ -5,7 +5,6 @@ import { useSearchParams } from 'react-router-dom';
 import { WorkspaceService } from '@/application/services/domains';
 import { SubscriptionPlan, Workspace } from '@/application/types';
 import { ReactComponent as ChevronDownIcon } from '@/assets/icons/alt_arrow_down.svg';
-import { ReactComponent as TipIcon } from '@/assets/icons/help.svg';
 import { ReactComponent as AddIcon } from '@/assets/icons/plus.svg';
 import { ReactComponent as ImportIcon } from '@/assets/icons/save_as.svg';
 import { ReactComponent as SettingsIcon } from '@/assets/icons/settings.svg';
@@ -42,9 +41,7 @@ import {
   DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { canManageWorkspaceBilling } from '@/utils/subscription';
-import { openUrl } from '@/utils/url';
 
 export function Workspaces() {
   const { t } = useTranslation();
@@ -215,20 +212,6 @@ export function Workspaces() {
                   </DropdownMenuItem>
                   <DropdownMenuItem data-testid='import-from-notion' onSelect={() => handleOpenImport('notion')}>
                     <div className={'flex-1 text-left'}>{t('web.importFromNotion')}</div>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <span
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            void openUrl('https://docs.appflowy.io/docs/guides/import-from-notion', '_blank');
-                          }}
-                          className={'ml-auto cursor-pointer text-icon-secondary'}
-                        >
-                          <TipIcon />
-                        </span>
-                      </TooltipTrigger>
-                      <TooltipContent>{t('workspace.learnMore')}</TooltipContent>
-                    </Tooltip>
                   </DropdownMenuItem>
                   <DropdownMenuItem data-testid='import-from-confluence' onSelect={() => handleOpenImport('confluence')}>
                     <div className={'flex-1 text-left'}>{t('web.importFromConfluence')}</div>

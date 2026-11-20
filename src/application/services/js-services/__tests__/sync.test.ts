@@ -1,4 +1,4 @@
-import { handleMessage, initSync, SyncContext } from '@/application/services/js-services/sync-protocol';
+import { bindSyncContext, handleMessage, initSync, SyncContext } from '@/application/services/js-services/sync-protocol';
 import { CollabOrigin, Types } from '@/application/types';
 import { messages } from '@/proto/messages';
 import { expect } from '@jest/globals';
@@ -444,5 +444,62 @@ describe('sync protocol', () => {
 
     doc.destroy();
     serverDoc.destroy();
+  });
+
+  describe('manifest replies', () => {
+    const makeContext = () => {
+      const doc = new Y.Doc({ guid: random.uuidv4() });
+      const emit = jest.fn();
+      const onManifestSync = jest.fn();
+      const ctx: SyncContext = { doc, collabType: Types.Database, emit, onManifestSync };
+
+      // A deleted entry leaves a delete set, so the diff is never the empty update.
+      doc.getMap('root').set('gone', 'value');
+      doc.getMap('root').delete('gone');
+      (outboxMock.shouldRouteUpdateThroughOutbox as jest.Mock).mockReturnValue(false);
+
+      return { doc, emit, onManifestSync, ctx };
+    };
+    const manifest = (doc: Y.Doc) => ({
+      objectId: doc.guid,
+      collabType: Types.Database,
+      syncRequest: { stateVector: Y.encodeStateVector(doc), version: doc.version },
+    });
+
+    it('answers an identical manifest with identical bytes only once', () => {
+      const { doc, emit, onManifestSync, ctx } = makeContext();
+
+      handleMessage(ctx, manifest(doc));
+      handleMessage(ctx, manifest(doc));
+      handleMessage(ctx, manifest(doc));
+
+      expect(emit).toHaveBeenCalledTimes(1);
+      expect(onManifestSync).toHaveBeenCalledTimes(3);
+    });
+
+    it('answers again once the local diff changes', () => {
+      const { doc, emit, ctx } = makeContext();
+      const serverVector = Y.encodeStateVector(doc);
+
+      handleMessage(ctx, { ...manifest(doc), syncRequest: { stateVector: serverVector, version: doc.version } });
+      doc.getMap('root').set('another', 'edit');
+      handleMessage(ctx, { ...manifest(doc), syncRequest: { stateVector: serverVector, version: doc.version } });
+
+      expect(emit).toHaveBeenCalledTimes(2);
+    });
+
+    it('answers again after the context is rebound to a new connection', () => {
+      const { doc, emit, ctx } = makeContext();
+
+      handleMessage(ctx, manifest(doc));
+      bindSyncContext(ctx);
+      emit.mockClear();
+      handleMessage(ctx, manifest(doc));
+
+      expect(emit).toHaveBeenCalledTimes(1);
+      expect(emit).toHaveBeenCalledWith(expect.objectContaining({
+        collabMessage: expect.objectContaining({ update: expect.anything() }),
+      }));
+    });
   });
 });

@@ -243,8 +243,10 @@ export default defineConfig(async ({ command, mode }) => {
               },
             ],
           },
+          // Icons are decorative: the button or label next to them carries the meaning.
           svgProps: {
             role: 'img',
+            'aria-hidden': 'true',
           },
           replaceAttrValues: {
             '#333': 'currentColor',
@@ -344,6 +346,7 @@ export default defineConfig(async ({ command, mode }) => {
             },
           }
         : {},
+      external: ['react-gesture-responder'],
     },
     resolve: {
       dedupe: [...VITE_DEDUPED_DEPENDENCIES],
@@ -356,6 +359,8 @@ export default defineConfig(async ({ command, mode }) => {
 
     optimizeDeps: {
       include: [...VITE_OPTIMIZED_DEPENDENCIES],
+      // Fix for react-gesture-responder issue in react-grid-dnd
+      exclude: ['react-gesture-responder'],
     },
     css: {
       preprocessorOptions: {

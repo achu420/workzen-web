@@ -219,7 +219,7 @@ function GridFieldMenu({
       {children}
       <DropdownMenu open={menuOpen} onOpenChange={setMenuOpen}>
         <DropdownMenuTrigger asChild>
-          <Button tabIndex={-1} className={'pointer-events-none absolute left-0 right-0 top-0 z-[-1] opacity-0'} />
+          <Button tabIndex={-1} aria-hidden={'true'} className={'pointer-events-none absolute left-0 right-0 top-0 z-[-1] opacity-0'} />
         </DropdownMenuTrigger>
         <DropdownMenuContent onCloseAutoFocus={(e) => e.preventDefault()}>
           {isEditingDisabled && (

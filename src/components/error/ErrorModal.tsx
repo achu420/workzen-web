@@ -16,6 +16,7 @@ export const ErrorModal = ({ message, onClose }: { message: string; onClose: () 
       >
         <button
           onClick={() => onClose()}
+          aria-label={'Close'}
           className={'absolute right-0 top-0 z-10 px-2 py-2 text-text-secondary hover:text-text-primary'}
         >
           <CloseSvg className={'h-5 w-5'} />

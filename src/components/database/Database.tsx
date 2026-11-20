@@ -57,6 +57,7 @@ import { shouldUseFixedDatabaseViewport } from '@/components/database/layout';
 import { EmbeddedDatabasePermissionsResolver } from '@/components/editor/components/blocks/database/hooks/useEmbeddedDatabasePermissions';
 import { cn } from '@/lib/utils';
 import { Log } from '@/utils/log';
+import { getServerInfoSnapshot } from '@/utils/server-info';
 
 import { DatabaseContextProvider } from './DatabaseContext';
 
@@ -911,7 +912,12 @@ function Database(props: Database2Props) {
 
     // Skip blob prefetch in read-only mode (publish view)
     // The publish API doesn't support blob/diff endpoint
-    if (readOnly) {
+    // A server that has no bulk-row endpoint says so in server-info: rows then arrive through per-row sync (the same
+    // path the failed request fell back to), without a 404 on every database open.
+    const serverInfo = getServerInfoSnapshot();
+    const blobDiffUnavailable = serverInfo.status === 'available' && serverInfo.info.enable_database_blob_diff === false;
+
+    if (readOnly || blobDiffUnavailable) {
       gate.resolve();
       setBlobPrefetchComplete(true);
       setSeedsReady(true);

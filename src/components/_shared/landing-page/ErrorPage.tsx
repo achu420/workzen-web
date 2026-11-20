@@ -60,13 +60,7 @@ export function ErrorPage({ onRetry, error, title, description }: ErrorPageProps
               </>
             )}
             {t('landingPage.error.contact', 'contact ')}
-            <span
-              onClick={() => window.open('mailto:support@appflowy.io', '_blank')}
-              className='cursor-pointer text-text-action hover:underline'
-            >
-              support@appflowy.io
-            </span>
-            .
+            your workspace administrator.
           </div>
         </>
       }

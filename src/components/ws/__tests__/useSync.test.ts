@@ -313,6 +313,22 @@ describe('useSync reconnect binding', () => {
     doc.destroy();
   });
 
+  it('refuses to send an update for an object with no sync context so the server does not close the socket', () => {
+    const ws = { ...createWs(), readyState: WebSocket.OPEN } as AppflowyWebSocketType;
+    const { result, unmount } = renderHook(() => useSync(ws, createBroadcastChannel(), defaultEventEmitter, defaultWorkspaceId));
+    const doc = createDoc('04040404-0404-4404-8404-040404040404');
+
+    act(() => {
+      result.current.registerSyncContext({ doc, collabType: Types.Document });
+    });
+
+    expect(() => result.current.ensureObjectBoundForSend('05050505-0505-4505-8505-050505050505')).toThrow(/no sync context/);
+    expect(() => result.current.ensureObjectBoundForSend(doc.guid)).not.toThrow();
+
+    unmount();
+    doc.destroy();
+  });
+
   it('starts a fresh manifest exchange for every registered document when the websocket reopens', () => {
     const ws = {
       ...createWs(),

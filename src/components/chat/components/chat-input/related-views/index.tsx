@@ -1,6 +1,7 @@
 import { motion } from 'framer-motion';
 import debounce from 'lodash-es/debounce';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 
 import { ReactComponent as DocIcon } from '@/assets/icons/page.svg';
 import { ReactComponent as ChevronDown } from '@/assets/icons/triangle_down.svg';
@@ -15,10 +16,12 @@ import { View } from '@/components/chat/types';
 import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Separator } from '@/components/ui/separator';
+import { Switch } from '@/components/ui/switch';
 
 import { Spaces } from './spaces';
 
 export function RelatedViews() {
+  const { t } = useTranslation();
   const [searchValue, setSearchValue] = useState('');
   const [open, setOpen] = useState(false);
   const openGenerationRef = useRef(0);
@@ -33,6 +36,8 @@ export function RelatedViews() {
   } = useMessagesHandlerContext();
   const parentView = ragScopeState.parentView;
   const viewsLoading = ragScopeState.status === 'loading';
+  // Databases and cards are part of what the chat can use unless switched off here (the pages below only pick documents).
+  const includeCards = chatSettings?.metadata?.include_cards !== false;
 
   const scopedRoots = useMemo(() => {
     return parentView ? filterDocumentViews([parentView]) : [];
@@ -135,6 +140,19 @@ export function RelatedViews() {
           className={'flex h-fit max-h-[360px] min-h-[200px] w-[300px] flex-col'}
           data-testid='chat-related-views-popover'
         >
+          <label className='flex items-center justify-between gap-3 px-3 pb-1 pt-3 text-sm text-text-primary' data-testid='chat-scope-cards-row'>
+            <span>{t('chat.scope.includeCards', { defaultValue: 'Include cards and databases' })}</span>
+            <Switch
+              checked={includeCards}
+              disabled={questionSending}
+              data-testid='chat-scope-include-cards'
+              aria-label={t('chat.scope.includeCards', { defaultValue: 'Include cards and databases' })}
+              onCheckedChange={(next) => void updateChatSettings({ metadata: { include_cards: next } })}
+            />
+          </label>
+          <p className='px-3 pb-1 text-xs text-text-tertiary'>
+            {t('chat.scope.documentsHint', { defaultValue: 'Tick pages to limit which documents the chat reads.' })}
+          </p>
           <SearchInput className='m-2' value={searchValue} onChange={setSearchValue} />
           <Separator />
           <div className={'appflowy-scrollbar flex-1 overflow-y-auto overflow-x-hidden p-2'}>

@@ -4,7 +4,7 @@ import { Trans, useTranslation } from 'react-i18next';
 
 import { AuthService } from '@/application/services/domains';
 import { buildLoginUrl } from '@/application/session/sign_in';
-import { ReactComponent as Logo } from '@/assets/icons/logo.svg';
+import { ReactComponent as Logo } from '@/assets/icons/workzen-symbol.svg';
 import { LOGIN_ACTION } from '@/components/login/const';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';

@@ -2,7 +2,7 @@ import { useCallback } from 'react';
 import { validate as uuidValidate } from 'uuid';
 import * as Y from 'yjs';
 
-import { initSync, SyncContext } from '@/application/services/js-services/sync-protocol';
+import { buildSyncRequestMessage, initSync, SyncContext } from '@/application/services/js-services/sync-protocol';
 import { Types } from '@/application/types';
 import { messages } from '@/proto/messages';
 import { Log } from '@/utils/log';
@@ -114,6 +114,15 @@ export function useSyncContextLifecycle(
 
     refs.registeredContexts.current.delete(objectId);
     refs.contextRefCounts.current.delete(objectId);
+    // Task 71 fix: an unregistered object's binding (if it happened to be
+    // the one currently holding the shared connection slot) is no longer
+    // meaningful. Clearing it is not required for correctness — the self-
+    // healing `context.emit` wrapper re-asserts on demand regardless — but
+    // it avoids `ensureObjectBoundForSend` skipping a stale match.
+    if (refs.lastBoundObjectId.current === objectId) {
+      refs.lastBoundObjectId.current = null;
+    }
+
     Log.debug(`Unregistered sync context for objectId ${objectId}`);
   }, [refs]);
 
@@ -177,26 +186,99 @@ export function useSyncContextLifecycle(
 
       Log.debug(`Registering sync context for objectId ${context.doc.guid} with collabType ${context.collabType}`);
       prepareContext?.(context);
-      context.emit = (message) => {
+
+      // SyncContext extends RegisterSyncContext by attaching the emit function and destroy handler
+      const syncContext = context as SyncContext;
+
+      // Task 76 fix: returns a Promise that resolves only once `message` has
+      // actually been handed to `sendMessage`/`postMessage` (i.e. actual
+      // transport transmission), not merely once it has been scheduled.
+      // Database/DatabaseRow sends are gated behind an async `beforeSend`
+      // check (database-history restore gating) and must not be treated as
+      // "sent" until that check resolves — see
+      // docs/TASK76_ORDERED_COLLABORATION_SEND_REPORT.md.
+      //
+      // Task 76.1 fix: resolves to `true` only if the message was actually
+      // transmitted, `false` if it was denied/suppressed (restore gate said
+      // `allowed: false`, the context was replaced while the check was
+      // pending, or `beforeSend` threw). Callers use this to decide whether
+      // a *dependent* message may proceed — see docs/TASK76_1_ORDERING_REGRESSION_REPORT.md.
+      const rawEmit = (message: messages.IMessage): Promise<boolean> => {
         if (!beforeSend || (context.collabType !== Types.Database && context.collabType !== Types.DatabaseRow)) {
           sendMessage(message);
           postMessage(message);
-          return;
+          return Promise.resolve(true);
         }
 
         const doc = context.doc;
         const marker = message.collabMessage?.update?.databaseRestoreId ?? doc.databaseRestoreId ??
           '00000000-0000-0000-0000-000000000000';
 
-        void beforeSend(doc.guid, context.collabType, marker).then((allowed) => {
-          if (!allowed || refs.registeredContexts.current.get(doc.guid)?.doc !== doc) return;
+        return beforeSend(doc.guid, context.collabType, marker).then((allowed) => {
+          if (!allowed || refs.registeredContexts.current.get(doc.guid)?.doc !== doc) return false;
           sendMessage(message);
           postMessage(message);
-        }).catch((error) => Log.warn('[DatabaseHistory] Sync deferred until restore state is available', error));
+          return true;
+        }).catch((error) => {
+          Log.warn('[DatabaseHistory] Sync deferred until restore state is available', error);
+          return false;
+        });
       };
 
-      // SyncContext extends RegisterSyncContext by attaching the emit function and destroy handler
-      const syncContext = context as SyncContext;
+      context.emit = (message) => {
+        const objectId = syncContext.doc.guid;
+        const isOwnSyncRequest = message.collabMessage?.objectId === objectId && Boolean(message.collabMessage?.syncRequest);
+
+        // Task 71 fix: the server's `websocket.objectId` is a single slot
+        // shared across every collab object multiplexed onto this one
+        // connection. Re-assert THIS object's own binding immediately
+        // before any frame other than the bind request itself, so the
+        // server always processes this object's SyncRequest before a frame
+        // that depends on it -- even when a DIFFERENT object's SyncRequest
+        // most recently "won" the slot.
+        //
+        // Task 76 fix: for Database/DatabaseRow, the actual transmission of
+        // each `rawEmit` call is deferred behind its own independent
+        // `beforeSend(...).then(...)` promise (database-history restore
+        // gating). Two consecutive, independently-deferred `rawEmit` calls
+        // have NO guaranteed relative ordering on the wire -- the second
+        // promise can resolve and transmit before the first. We therefore
+        // explicitly `await` the SyncRequest's actual transmission before
+        // transmitting the dependent `message`, instead of relying on
+        // WebSocket/TCP send-call ordering (which only holds for
+        // synchronous sends). See
+        // docs/TASK75_DISCOVERY.md and
+        // docs/TASK76_ORDERED_COLLABORATION_SEND_REPORT.md for the evidence.
+        const needsRebind = !isOwnSyncRequest && refs.lastBoundObjectId.current !== objectId;
+
+        refs.lastBoundObjectId.current = objectId;
+
+        if (needsRebind) {
+          // Task 76.1 fix: only send the dependent `message` if the
+          // SyncRequest actually reached the wire. If it was denied
+          // (restore gate), suppressed (stale context), or errored, sending
+          // `message` anyway would repeat the exact ordering defect Task 76
+          // fixed, just via the denial path instead of the timing path --
+          // the server would still see an update for an object it was never
+          // told to bind. Also revert the optimistic `lastBoundObjectId`
+          // write above so a later emit call retries the rebind instead of
+          // wrongly believing this object is already bound (which would
+          // otherwise wedge it the same way Task 75's stuck retry loop did).
+          return rawEmit(buildSyncRequestMessage(syncContext)).then((sent) => {
+            if (!sent) {
+              if (refs.lastBoundObjectId.current === objectId) {
+                refs.lastBoundObjectId.current = null;
+              }
+
+              return;
+            }
+
+            return rawEmit(message).then(() => undefined);
+          });
+        }
+
+        return rawEmit(message).then(() => undefined);
+      };
 
       syncContext.onLocalUpdate = onLocalUpdate;
       syncContext.onManifestSync = onManifestSync;

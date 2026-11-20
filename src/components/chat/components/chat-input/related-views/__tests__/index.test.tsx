@@ -164,4 +164,28 @@ describe('RelatedViews persistence', () => {
 
     expect(refreshRagScope).not.toHaveBeenCalled();
   });
+
+  it('shows whether cards and databases are included and switches them off or on without touching the page selection', () => {
+    render(<RelatedViews />);
+    const toggle = screen.getByTestId('chat-scope-include-cards');
+
+    expect(toggle.getAttribute('aria-checked')).toBe('true');
+    fireEvent.click(toggle);
+    expect(updateChatSettings).toHaveBeenCalledWith({ metadata: { include_cards: false } });
+    expect(screen.getByTestId('chat-input-related-views').textContent).toContain('1');
+  });
+
+  it('reflects a chat that already has cards switched off, and locks the switch while a question is sending', () => {
+    (mockMessagesContext.chatSettings as { metadata: Record<string, unknown> }).metadata = { include_cards: false };
+    const { unmount } = render(<RelatedViews />);
+
+    expect(screen.getByTestId('chat-scope-include-cards').getAttribute('aria-checked')).toBe('false');
+    fireEvent.click(screen.getByTestId('chat-scope-include-cards'));
+    expect(updateChatSettings).toHaveBeenCalledWith({ metadata: { include_cards: true } });
+    unmount();
+    mockMessagesContext.questionSending = true;
+    render(<RelatedViews />);
+    expect(screen.getByTestId('chat-scope-include-cards').hasAttribute('disabled')).toBe(true);
+    (mockMessagesContext.chatSettings as { metadata: Record<string, unknown> }).metadata = {};
+  });
 });

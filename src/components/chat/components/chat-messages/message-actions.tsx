@@ -19,7 +19,7 @@ import Regenerations from '../chat-messages/regenerations';
 export function MessageActions({ id, isHovered }: { id: number; isHovered: boolean }) {
   const { getMessage, messageIds } = useChatMessagesContext();
 
-  const { selectionMode } = useChatContext();
+  const { selectionMode, scope } = useChatContext();
 
   const { getEditor } = useEditorContext();
 
@@ -116,7 +116,7 @@ export function MessageActions({ id, isHovered }: { id: number; isHovered: boole
             </TooltipContent>
           </Tooltip>
           <Regenerations id={id} sideOffset={isLast ? 4 : 8} />
-          <AddMessageTo id={id} />
+          {!scope && <AddMessageTo id={id} />}
         </>
       )}
     </div>

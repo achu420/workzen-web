@@ -16,12 +16,18 @@ export interface CollabState {
 }
 
 export function decodeCurrentRowPageCollab(state: CollabState, objectId: string, version?: string | null): YDoc {
+  // A caller with no locally adopted version yet (fresh page load, before any
+  // version-carrying collab message has arrived) passes `undefined`, which
+  // call sites normalize to `null` via `?? null`. Both mean "unknown", not
+  // "must be null" -- treat them the same so a brand-new database/row isn't
+  // permanently unable to create a row-page. Mirrors the same tolerance in
+  // database-yjs/creation/source-readiness.ts's remoteDatabaseCoversSource.
   if (
     state.object_id !== objectId ||
     !Array.isArray(state.doc_state) ||
     state.doc_state.length === 0 ||
     state.doc_state.some((byte) => !Number.isInteger(byte) || byte < 0 || byte > 255) ||
-    (version !== undefined && (state.collab_version ?? null) !== version)
+    (version !== undefined && version !== null && (state.collab_version ?? null) !== version)
   )
     throw new Error('The current row-page identity or version changed.');
   const doc = new Y.Doc({ guid: objectId }) as YDoc;
@@ -119,9 +125,17 @@ export async function waitForRowDocumentSource(
           data.get('database_id') !== identity.databaseId
         )
           throw new Error('The current source Row identity changed.');
-        // Later local cell edits need not finish syncing to publish its body.
-        if (member) return state.row;
       }
+
+      // Later local cell edits need not finish syncing to publish its body.
+      // A hidden template row is a member via its metas registration (the
+      // deterministic rowId/docViewId match inside hasCurrentRowDocumentSource)
+      // even before its own DatabaseRow collab exists on the server -- that
+      // row and this flow's row-document are committed together by the same
+      // atomic request this readiness check gates. Requiring state.row here
+      // would make the hidden-template branch of hasCurrentRowDocumentSource
+      // unreachable for a brand-new template, deadlocking row-page creation.
+      if (member) return state.row;
     } finally {
       database.destroy();
       row?.destroy();

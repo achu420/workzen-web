@@ -163,7 +163,11 @@ function validateReceipt(receipt: CreatedRowReceipt, request: DefaultRowRequest,
     receipt.result?.row_id !== request.row_id ||
     receipt.result.database_id !== databaseId ||
     receipt.result.database_restore_id !== request.database_restore_id ||
-    (receipt.result.database_version ?? undefined) !== version ||
+    // The request never carries a client version (DefaultRowRequest has no
+    // such field) -- the server always reports its own current version. A
+    // `version` of undefined just means the local doc had not yet adopted
+    // one when creation started; only compare when we actually captured one.
+    (version !== undefined && (receipt.result.database_version ?? undefined) !== version) ||
     !receipt.result.update_batch_id
   ) {
     throw new Error('Created Row receipt does not match its command');

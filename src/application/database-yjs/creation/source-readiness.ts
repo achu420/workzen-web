@@ -10,6 +10,21 @@ export function assertNotAborted(signal: AbortSignal): void {
 
 export const ORIGINAL_DATABASE_RESTORE_ID = '00000000-0000-0000-0000-000000000000';
 
+/**
+ * Whether the server's restore-state still describes the generation this
+ * creation captured. A local doc that never adopted a collab version (fresh
+ * open, nothing persisted yet) reports `undefined`; that is "unknown", not a
+ * generation the server must also lack, so only a known version can mismatch.
+ */
+export function restoreStateMatches(
+  state: { database_restore_id: string | null; version: string | null },
+  expected: { restoreId: string; version?: string | null }
+): boolean {
+  if ((state.database_restore_id ?? ORIGINAL_DATABASE_RESTORE_ID) !== expected.restoreId) return false;
+
+  return expected.version === undefined || expected.version === null || (state.version ?? undefined) === expected.version;
+}
+
 /** Capture live and durable histories independently: combining them could hide a missing fragment. */
 export interface DatabaseViewSourceRequirements {
   databaseId: string;
@@ -69,8 +84,15 @@ export function remoteDatabaseCoversSource(
   requirements: DatabaseViewSourceRequirements,
   result: CollabFullSyncBatchResult
 ): boolean {
+  // A freshly opened database doc has no locally adopted version yet (it only
+  // ever adopts one via an IndexedDB-persisted record or a version-reset
+  // message, see doc.version assignments in application/db/index.ts). That
+  // is "unknown", not "must stay undefined" — same tolerance versionChanged()
+  // already gives this case for live WS messages. Requiring an exact match
+  // here would permanently block row creation on a database that has not
+  // yet round-tripped a version-carrying message from the server.
   if (result.error || result.objectId !== requirements.databaseId || result.collabType !== Types.Database ||
-    result.collabVersion !== requirements.version) {
+    (requirements.version !== undefined && result.collabVersion !== requirements.version)) {
     throw new Error('Database source identity or version changed');
   }
 

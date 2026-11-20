@@ -4,6 +4,8 @@ import { toast } from 'sonner';
 import { BillingService, FileService, PageService, PublishService, ViewService } from '@/application/services/domains';
 import { deleteView as clearViewCache } from '@/application/services/js-services/cache';
 import { clearPublishViewInfoCache } from '@/application/services/js-services/cached-api';
+import { createDatabaseFromTemplate } from '@/application/services/js-services/http/database-template-api';
+import { createDocumentFromTemplate } from '@/application/services/js-services/http/document-template-api';
 import { PageCreationActivation, usesDefaultPageCreation } from '@/application/services/js-services/http/page-default-creation';
 import { publishCollabs, PublishCollabMetadata } from '@/application/services/js-services/http/publish-api';
 import { gatherDatabasePublishData } from '@/application/services/js-services/publish-database-data';
@@ -169,6 +171,79 @@ export function usePageOperations({
       }
     },
     [currentWorkspaceId, role, loadOutline, capturePageActivation]
+  );
+
+  // Create a database from a library template as a child of `parentViewId`.
+  // Resolves to the new database container's view id once it is visible in the sidebar.
+  const addPageFromTemplate = useCallback(
+    async (parentViewId: string, template: { templateId: string; name?: string }) => {
+      if (!currentWorkspaceId) {
+        throw new Error('No workspace or service found');
+      }
+
+      if (role === Role.Guest) {
+        toast.error('No permission to create pages');
+        throw new Error('No permission to create pages');
+      }
+
+      const capturedEpoch = creationOwnerRef.current.epoch;
+      const assertCurrent = () => {
+        if (creationOwnerRef.current.epoch !== capturedEpoch || creationOwnerRef.current.workspaceId !== currentWorkspaceId) {
+          throw new Error('The page creation workspace changed');
+        }
+      };
+
+      const { result } = await createDatabaseFromTemplate(currentWorkspaceId, {
+        templateId: template.templateId,
+        parentViewId,
+        name: template.name,
+      });
+
+      assertCurrent();
+      ViewService.invalidateCache(currentWorkspaceId, parentViewId);
+      refreshDatabaseCatalogAfterMutation(currentWorkspaceId);
+      // The realtime folder notification is the primary refresh path; force a
+      // reload so the new database is in the tree before navigation.
+      await loadOutline?.(currentWorkspaceId, true);
+      await ensureViewVisibleInOutline?.(result.view_id);
+      return result.view_id;
+    },
+    [currentWorkspaceId, role, loadOutline, ensureViewVisibleInOutline]
+  );
+
+  // Create a document template's page tree as a child of `parentViewId`.
+  // Resolves to the new root page's view id once it is visible in the sidebar.
+  const addDocumentFromTemplate = useCallback(
+    async (parentViewId: string, template: { templateId: string; name?: string }) => {
+      if (!currentWorkspaceId) {
+        throw new Error('No workspace or service found');
+      }
+
+      if (role === Role.Guest) {
+        toast.error('No permission to create pages');
+        throw new Error('No permission to create pages');
+      }
+
+      const capturedEpoch = creationOwnerRef.current.epoch;
+      const assertCurrent = () => {
+        if (creationOwnerRef.current.epoch !== capturedEpoch || creationOwnerRef.current.workspaceId !== currentWorkspaceId) {
+          throw new Error('The page creation workspace changed');
+        }
+      };
+
+      const { result } = await createDocumentFromTemplate(currentWorkspaceId, {
+        templateId: template.templateId,
+        parentViewId,
+        name: template.name,
+      });
+
+      assertCurrent();
+      ViewService.invalidateCache(currentWorkspaceId, parentViewId);
+      await loadOutline?.(currentWorkspaceId, true);
+      await ensureViewVisibleInOutline?.(result.view_id);
+      return result.view_id;
+    },
+    [currentWorkspaceId, role, loadOutline, ensureViewVisibleInOutline]
   );
 
   // Delete a page (move to trash)
@@ -692,6 +767,8 @@ export function usePageOperations({
 
   return {
     addPage,
+    addPageFromTemplate,
+    addDocumentFromTemplate,
     deletePage,
     duplicatePage,
     updatePage,

@@ -22,6 +22,7 @@ let mockOutline: Array<{
 }> = [];
 let mockCreatedSpaceId = 'space-created';
 let mockCreatedPageId = 'page-created';
+let lastSpaceListProp: Array<{ id: string; name: string }> | undefined;
 let lastCreateSpaceProps:
   | {
       initialPage?: CreatePagePayload;
@@ -94,14 +95,26 @@ jest.mock('@/components/app/app.hooks', () => ({
 
 jest.mock('@/components/publish/header/duplicate/SpaceList', () => ({
   __esModule: true,
-  default: ({ title, onChange }: { title: ReactNode; onChange: (spaceId: string) => void }) => (
-    <div data-testid='space-list'>
-      {title}
-      <button data-testid='select-existing-space' onClick={() => onChange('space-existing')}>
-        select
-      </button>
-    </div>
-  ),
+  default: ({
+    title,
+    onChange,
+    spaceList,
+  }: {
+    title: ReactNode;
+    onChange: (spaceId: string) => void;
+    spaceList: Array<{ id: string; name: string }>;
+  }) => {
+    lastSpaceListProp = spaceList;
+
+    return (
+      <div data-testid='space-list'>
+        {title}
+        <button data-testid='select-existing-space' onClick={() => onChange('space-existing')}>
+          select
+        </button>
+      </div>
+    );
+  },
 }));
 
 jest.mock('@/components/app/view-actions/CreateSpaceModal', () => {
@@ -148,6 +161,7 @@ describe('NewPage create-space flow', () => {
     mockCreatedPageId = 'page-created';
     mockCreateSpaceModuleError = null;
     lastCreateSpaceProps = undefined;
+    lastSpaceListProp = undefined;
     mockEnsureViewVisibleInOutline.mockResolvedValue([]);
   });
 
@@ -279,7 +293,7 @@ describe('NewPage create-space flow', () => {
       {
         view_id: 'space-existing',
         name: 'Existing',
-        extra: {},
+        extra: { is_space: true },
         is_private: false,
         children: [],
       },
@@ -300,6 +314,37 @@ describe('NewPage create-space flow', () => {
     expect(mockCreateSpaceWithInitialPage).not.toHaveBeenCalled();
   });
 
+  it('filters non-space outline entries out of the duplicate-target space picker', () => {
+    // A navigation-merge or other outline update can append a top-level entry
+    // that is not a space (e.g. a page, or a node missing extra.is_space).
+    // SpaceList.tsx reads `.name` unconditionally, so a non-space entry with
+    // no name previously crashed the whole app (see Task 39 report).
+    mockOutline = [
+      {
+        view_id: 'space-existing',
+        name: 'Existing',
+        extra: { is_space: true },
+        is_private: false,
+        children: [],
+      },
+      // Simulates a non-space top-level outline entry with no name.
+      {
+        view_id: 'stray-non-space-node',
+        name: undefined as unknown as string,
+        extra: {},
+        is_private: false,
+        children: [],
+      },
+    ];
+    render(<NewPage />);
+
+    fireEvent.click(screen.getByTestId('new-page-button'));
+
+    expect(lastSpaceListProp).toEqual([
+      { id: 'space-existing', extra: JSON.stringify({ is_space: true }), name: 'Existing', isPrivate: false },
+    ]);
+  });
+
   it('blocks the create-draft link while adding an existing page', async () => {
     const addition = deferred<{ view_id: string }>();
 
@@ -308,7 +353,7 @@ describe('NewPage create-space flow', () => {
       {
         view_id: 'space-existing',
         name: 'Existing',
-        extra: {},
+        extra: { is_space: true },
         is_private: false,
         children: [],
       },

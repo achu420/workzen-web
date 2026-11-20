@@ -48,7 +48,7 @@ interface MessagesHandlerContextTypes {
 export const MessagesHandlerContext = createContext<MessagesHandlerContextTypes | undefined>(undefined);
 
 function useMessagesHandler() {
-  const { chatId, requestInstance, currentUser } = useChatContext();
+  const { chatId, requestInstance, currentUser, scope } = useChatContext();
 
   const { chatSettings, fetchChatSettings, persistChatSettings, waitForPendingChatSettings, updateChatSettings } =
     useChatSettingsLoader();
@@ -58,6 +58,7 @@ function useMessagesHandler() {
     refresh: refreshRagScope,
   } = useRagScopeLoader({
     chatId,
+    scope,
     requestInstance,
     fetchChatSettings,
     persistChatSettings,
@@ -258,18 +259,21 @@ function useMessagesHandler() {
           createAssistantMessage(answerId, 0);
         }, 200);
 
-        void (async () => {
-          try {
-            const view = await requestInstance.getCurrentView();
+        // A card chat has no page to rename.
+        if (!scope) {
+          void (async () => {
+            try {
+              const view = await requestInstance.getCurrentView();
 
-            if (isFirstMessage && view) {
-              await requestInstance.updateViewName(view, message);
+              if (isFirstMessage && view) {
+                await requestInstance.updateViewName(view, message);
+              }
+              // eslint-disable-next-line
+            } catch (e: any) {
+              toast.error(e.message);
             }
-            // eslint-disable-next-line
-          } catch (e: any) {
-            toast.error(e.message);
-          }
-        })();
+          })();
+        }
 
         // eslint-disable-next-line
       } catch (e: any) {
@@ -293,6 +297,7 @@ function useMessagesHandler() {
       flushChatSettings,
       waitForPendingChatSettings,
       waitUntilRagScopeReady,
+      scope,
     ]
   );
 

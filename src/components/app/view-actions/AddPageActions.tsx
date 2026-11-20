@@ -1,13 +1,15 @@
-import { ReactNode, useCallback, useMemo } from 'react';
+import { Fragment, ReactNode, useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
 
+import { DatabaseTemplateSummary } from '@/application/services/js-services/http/database-template-api';
+import { DocumentTemplateSummary } from '@/application/services/js-services/http/document-template-api';
 import { View, ViewLayout } from '@/application/types';
+import { isSpaceView } from '@/application/view-utils';
 import { ReactComponent as UploadIcon } from '@/assets/icons/upload.svg';
 import { DatabaseViewCreationItem } from '@/components/_shared/DatabaseViewCreationItem';
 import { ViewIcon } from '@/components/_shared/view-icon';
 import { buildInitialAIChatSettings } from '@/components/ai-chat/chat-settings';
-import { isSpaceView } from '@/components/ai-chat/rag-scope';
 import {
   useAIEnabled,
   useAppOperations,
@@ -15,9 +17,24 @@ import {
   useOpenPageModal,
   useToView,
 } from '@/components/app/app.hooks';
+import { useDatabaseTemplates } from '@/components/app/hooks/useDatabaseTemplates';
 import { useDatabaseViewCreation } from '@/components/app/hooks/useDatabaseViewCreation';
-import { DropdownMenuGroup } from '@/components/ui/dropdown-menu';
+import { useDocumentTemplates } from '@/components/app/hooks/useDocumentTemplates';
+import { groupByCategory } from '@/components/app/view-actions/group-templates';
+import {
+  DropdownMenuGroup,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+} from '@/components/ui/dropdown-menu';
 import { getErrorMessage } from '@/utils/errors';
+
+// DatabaseViewLayout (Grid 0, Board 1, Calendar 2) -> the sidebar ViewLayout icon.
+function templateLayout(databaseLayout: number): ViewLayout {
+  if (databaseLayout === 1) return ViewLayout.Board;
+  if (databaseLayout === 2) return ViewLayout.Calendar;
+  return ViewLayout.Grid;
+}
 
 function AddPageActions({
   view,
@@ -29,7 +46,7 @@ function AddPageActions({
   onClose?: () => void;
 }) {
   const { t } = useTranslation();
-  const { addPage, getSubscriptions } = useAppOperations();
+  const { addPage, addPageFromTemplate, addDocumentFromTemplate, getSubscriptions } = useAppOperations();
   const openPageModal = useOpenPageModal();
   const toView = useToView();
   const aiEnabled = useAIEnabled();
@@ -39,6 +56,45 @@ function AddPageActions({
     workspaceId: currentWorkspaceId,
   });
   const lastChildViewId = view.children?.[view.children.length - 1]?.view_id;
+  // The server only creates templates directly under a Space.
+  const templatesEnabled = !!addPageFromTemplate && isSpaceView(view);
+  const templates = useDatabaseTemplates(templatesEnabled);
+  const documentTemplatesEnabled = !!addDocumentFromTemplate && isSpaceView(view);
+  const documentTemplates = useDocumentTemplates(documentTemplatesEnabled);
+  const handleAddDocumentFromTemplate = useCallback(
+    async (template: DocumentTemplateSummary) => {
+      if (!addDocumentFromTemplate) return;
+      const loadingToastId = toast.loading(t('document.creating'));
+
+      try {
+        const viewId = await addDocumentFromTemplate(view.view_id, { templateId: template.template_id });
+
+        void openPageModal?.(viewId);
+        toast.dismiss(loadingToastId);
+      } catch (e: unknown) {
+        toast.dismiss(loadingToastId);
+        toast.error(getErrorMessage(e, 'Failed to create page'));
+      }
+    },
+    [addDocumentFromTemplate, openPageModal, t, view.view_id]
+  );
+  const handleAddFromTemplate = useCallback(
+    async (template: DatabaseTemplateSummary) => {
+      if (!addPageFromTemplate) return;
+      const loadingToastId = toast.loading(t('document.creating'));
+
+      try {
+        const viewId = await addPageFromTemplate(view.view_id, { templateId: template.template_id });
+
+        void toView(viewId);
+        toast.dismiss(loadingToastId);
+      } catch (e: unknown) {
+        toast.dismiss(loadingToastId);
+        toast.error(getErrorMessage(e, 'Failed to create page'));
+      }
+    },
+    [addPageFromTemplate, t, toView, view.view_id]
+  );
   const handleAddPage = useCallback(
     async (layout: ViewLayout, name?: string) => {
       if (!addPage) return;
@@ -206,7 +262,7 @@ function AddPageActions({
   );
 
   return (
-    <DropdownMenuGroup>
+    <DropdownMenuGroup className='max-h-[min(60vh,560px)] overflow-y-auto'>
       {actions.map((action) => (
         <DatabaseViewCreationItem
           key={action.label}
@@ -219,6 +275,50 @@ function AddPageActions({
           {action.label}
         </DatabaseViewCreationItem>
       ))}
+      {templatesEnabled && templates.length > 0 && (
+        <>
+          <DropdownMenuSeparator />
+          <DropdownMenuLabel>{t('template.menuName', { defaultValue: 'Templates' })}</DropdownMenuLabel>
+          {groupByCategory(templates).map(({ category, items }) => (
+            <Fragment key={category ?? 'built-in'}>
+              {category && <DropdownMenuLabel className={'text-xs text-text-tertiary'}>{category}</DropdownMenuLabel>}
+              {items.map((template) => (
+                <DropdownMenuItem
+                  key={template.template_id}
+                  data-testid={`add-database-template-${template.template_id}`}
+                  title={template.description}
+                  onSelect={() => void handleAddFromTemplate(template)}
+                >
+                  <ViewIcon layout={templateLayout(template.primary_layout)} size={'small'} />
+                  {template.name}
+                </DropdownMenuItem>
+              ))}
+            </Fragment>
+          ))}
+        </>
+      )}
+      {documentTemplatesEnabled && documentTemplates.length > 0 && (
+        <>
+          <DropdownMenuSeparator />
+          <DropdownMenuLabel>{t('template.pageTemplates', { defaultValue: 'Page templates' })}</DropdownMenuLabel>
+          {groupByCategory(documentTemplates).map(({ category, items }) => (
+            <Fragment key={category ?? 'built-in'}>
+              {category && <DropdownMenuLabel className={'text-xs text-text-tertiary'}>{category}</DropdownMenuLabel>}
+              {items.map((template) => (
+                <DropdownMenuItem
+                  key={template.template_id}
+                  data-testid={`add-document-template-${template.template_id}`}
+                  title={template.description}
+                  onSelect={() => void handleAddDocumentFromTemplate(template)}
+                >
+                  <ViewIcon layout={ViewLayout.Document} size={'small'} />
+                  {template.name}
+                </DropdownMenuItem>
+              ))}
+            </Fragment>
+          ))}
+        </>
+      )}
     </DropdownMenuGroup>
   );
 }

@@ -1,4 +1,4 @@
-import { ReactComponent as AppFlowyLogo } from '@/assets/icons/appflowy.svg';
+import { ReactComponent as AppFlowyLogo } from '@/assets/icons/workzen-logo.svg';
 import { RequestAccessError } from '@/components/app/hooks/useWorkspaceData';
 import { RequestAccessContent } from '@/components/app/share/RequestAccessContent';
 

@@ -74,7 +74,7 @@ function ColumnRename({
 
   return (
     <Popover open={open} onOpenChange={onOpenChange}>
-      <PopoverTrigger ref={ref} className={'absolute left-0 top-0'} />
+      <PopoverTrigger ref={ref} aria-hidden={'true'} tabIndex={-1} className={'absolute left-0 top-0'} />
       <PopoverContent
         container={container}
         align='start'

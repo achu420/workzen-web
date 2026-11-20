@@ -118,6 +118,18 @@ export type SyncContextType = {
    */
   scheduleDeferredCleanup: (objectId: string, delayMs?: number) => void;
   revertCollabVersion: (viewId: string, versionId: string) => Promise<void>;
+  /**
+   * Task 71 fix: re-asserts (re-sends) this object's own SyncRequest on the
+   * current WebSocket connection if it is not already the one the
+   * connection's shared `websocket.objectId` slot is bound to — a no-op
+   * otherwise. The persistent sync_outbox's realtime `send` callback
+   * (wired in `AppSyncLayer`) calls this immediately before writing an
+   * `update` frame to the socket, since that path bypasses the
+   * `context.emit` wrapper that self-heals every other outgoing message.
+   * See the `lastBoundObjectId` doc in `syncRefs.ts` for the full defect
+   * this closes.
+   */
+  ensureObjectBoundForSend: (objectId: string) => void;
 };
 
 export const isCollabVersionId = (value: string | null | undefined): value is string => {

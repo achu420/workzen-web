@@ -17,3 +17,7 @@ export * as RowService from './row';
 export * as NotificationService from './notification';
 export * as InlineCommentService from './inline-comment';
 export * as IntegrationService from './integration';
+export * as AISettingsService from './ai-settings';
+export * as AgentTokensService from './agent-tokens';
+export * as AgentActivityService from './agent-activity';
+export * as CardHistoryService from './card-history';

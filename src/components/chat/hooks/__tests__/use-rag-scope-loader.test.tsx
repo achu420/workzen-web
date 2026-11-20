@@ -293,4 +293,61 @@ describe('useRagScopeLoader', () => {
     expect(persistChatSettings).not.toHaveBeenCalled();
     await expect(result.current.waitUntilReady()).resolves.toBe(false);
   });
+
+  describe('card chats', () => {
+    const scope = { type: 'card' as const, databaseId: 'db-1', rowId: 'row-1' };
+    const cardMetadata = { scope: 'card', database_id: 'db-1', row_id: 'row-1' };
+
+    function setup(fetchChatSettings: () => Promise<ChatSettings | undefined>) {
+      const requestInstance = {
+        fetchCurrentChatParentScope: jest.fn(),
+        getViewNavigation: jest.fn(),
+      } as unknown as ChatRequest;
+      const persistChatSettings = jest.fn().mockResolvedValue(undefined);
+      const hook = renderHook(() =>
+        useRagScopeLoader({ chatId: 'card-chat', scope, requestInstance, fetchChatSettings, persistChatSettings })
+      );
+
+      return { requestInstance, persistChatSettings, ...hook };
+    }
+
+    it('is ready without any page lookups and marks a fresh chat as a card chat', async () => {
+      const { result, requestInstance, persistChatSettings } = setup(jest.fn().mockResolvedValue(settings()));
+
+      await waitFor(() => expect(result.current.state.status).toBe('ready'));
+      expect(requestInstance.fetchCurrentChatParentScope).not.toHaveBeenCalled();
+      expect(requestInstance.getViewNavigation).not.toHaveBeenCalled();
+      expect(persistChatSettings).toHaveBeenCalledTimes(1);
+      expect(persistChatSettings).toHaveBeenCalledWith({ metadata: cardMetadata });
+      expect(persistChatSettings.mock.calls[0][0]).not.toHaveProperty('rag_ids');
+      expect(persistChatSettings.mock.calls[0][0]).not.toHaveProperty('full_workspace');
+      await expect(result.current.waitUntilReady()).resolves.toBe(true);
+    });
+
+    it('does not rewrite settings that already carry the card marker', async () => {
+      const { result, persistChatSettings } = setup(jest.fn().mockResolvedValue(settings({ metadata: cardMetadata })));
+
+      await waitFor(() => expect(result.current.state.status).toBe('ready'));
+      expect(persistChatSettings).not.toHaveBeenCalled();
+    });
+
+    it('creates the chat from the marker when the first settings read finds nothing, then re-reads', async () => {
+      const fetchChatSettings = jest
+        .fn()
+        .mockResolvedValueOnce(undefined)
+        .mockResolvedValueOnce(settings({ metadata: cardMetadata }));
+      const { result, persistChatSettings } = setup(fetchChatSettings);
+
+      await waitFor(() => expect(result.current.state.status).toBe('ready'));
+      expect(persistChatSettings).toHaveBeenCalledWith({ metadata: cardMetadata });
+      expect(fetchChatSettings).toHaveBeenCalledTimes(2);
+    });
+
+    it('reports an error when the chat cannot be created', async () => {
+      const { result } = setup(jest.fn().mockResolvedValue(undefined));
+
+      await waitFor(() => expect(result.current.state.status).toBe('error'));
+      await expect(result.current.waitUntilReady()).resolves.toBe(false);
+    });
+  });
 });

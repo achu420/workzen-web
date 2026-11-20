@@ -71,12 +71,18 @@ function NewPage() {
   const spaceList = useMemo(() => {
     if (!outline) return [];
 
-    return outline.map((view) => ({
-      id: view.view_id,
-      extra: JSON.stringify(view.extra),
-      name: view.name,
-      isPrivate: view.is_private,
-    }));
+    // Top-level outline entries are not guaranteed to all be spaces (e.g. a
+    // navigation-merge can append a non-space node as a top-level sibling);
+    // filter to the same is_space check used elsewhere (useSpaceActionPermissions)
+    // so this picker only ever lists actual spaces.
+    return outline
+      .filter((view) => view.is_space === true || view.extra?.is_space === true)
+      .map((view) => ({
+        id: view.view_id,
+        extra: JSON.stringify(view.extra),
+        name: view.name,
+        isPrivate: view.is_private,
+      }));
   }, [outline]);
 
   const { addPage } = useAppOperations();

@@ -24,7 +24,7 @@ fi
 # Check required environment variables (after mapping)
 if [ -z "${APPFLOWY_BASE_URL}" ]; then
   echo "ERROR: APPFLOWY_BASE_URL environment variable is required but not set"
-  echo "Please set APPFLOWY_BASE_URL to your AppFlowy backend URL (e.g., https://your-backend.example.com)"
+  echo "Please set APPFLOWY_BASE_URL to your Workzen backend URL (e.g., https://your-backend.example.com)"
   echo "Note: You can also use the deprecated AF_BASE_URL for backward compatibility"
   exit 1
 fi

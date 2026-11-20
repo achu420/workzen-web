@@ -13,7 +13,7 @@ import {
 } from '@/components/ai-chat/rag-scope';
 import { findAncestors } from '@/components/chat/lib/views';
 import { ChatRequest } from '@/components/chat/request/chat-request';
-import { ChatSettings, View, ViewLayout } from '@/components/chat/types';
+import { CardChatScope, ChatSettings, View, ViewLayout } from '@/components/chat/types';
 
 export type RagScopeStatus = 'loading' | 'ready' | 'error';
 
@@ -134,13 +134,31 @@ function buildScopedSettingsUpdate(settings: ChatSettings, scoped: ScopedRagStat
   };
 }
 
+/** A card chat has no page behind it: it is ready once its settings carry the card scope marker. */
+async function prepareCardChat(
+  scope: CardChatScope,
+  fetchChatSettings: () => Promise<ChatSettings | undefined>,
+  persistChatSettings: (payload: Partial<ChatSettings>) => Promise<void>
+): Promise<void> {
+  const settings = await fetchChatSettings();
+  const metadata = settings?.metadata ?? {};
+  const marked = metadata.scope === 'card' && metadata.row_id === scope.rowId && metadata.database_id === scope.databaseId;
+
+  if (settings && marked) return;
+
+  await persistChatSettings({ metadata: { scope: 'card', database_id: scope.databaseId, row_id: scope.rowId } });
+  if (!settings && !(await fetchChatSettings())) throw new Error('Unable to load AI chat settings');
+}
+
 export function useRagScopeLoader({
   chatId,
+  scope,
   requestInstance,
   fetchChatSettings,
   persistChatSettings,
 }: {
   chatId: string;
+  scope?: CardChatScope;
   requestInstance: ChatRequest;
   fetchChatSettings: () => Promise<ChatSettings | undefined>;
   persistChatSettings: (payload: Partial<ChatSettings>) => Promise<void>;
@@ -152,6 +170,10 @@ export function useRagScopeLoader({
     scopedSettings: null,
   });
   const [initialBarrier] = useState(createReadinessBarrier);
+  const cardScopeRef = useRef(scope);
+  const scopeKey = scope ? `${scope.databaseId}:${scope.rowId}` : '';
+
+  cardScopeRef.current = scope;
   const attemptRef = useRef(0);
   const barrierRef = useRef({ attempt: 0, barrier: initialBarrier });
 
@@ -173,6 +195,15 @@ export function useRagScopeLoader({
 
     void (async () => {
       try {
+        if (scopeKey) {
+          await prepareCardChat(cardScopeRef.current as CardChatScope, fetchChatSettings, persistChatSettings);
+          if (!active) return;
+
+          setState({ status: 'ready', parentView: null, scopedSettings: null });
+          barrier.resolve(true);
+          return;
+        }
+
         const [settings, parentView] = await Promise.all([
           fetchChatSettings(),
           requestInstance.fetchCurrentChatParentScope(attempt > 0),
@@ -202,7 +233,7 @@ export function useRagScopeLoader({
       active = false;
       barrier.resolve(false);
     };
-  }, [attempt, chatId, fetchChatSettings, persistChatSettings, requestInstance]);
+  }, [attempt, chatId, scopeKey, fetchChatSettings, persistChatSettings, requestInstance]);
 
   const waitUntilReady = useCallback(() => barrierRef.current.barrier.promise, []);
   const refresh = useCallback(() => {

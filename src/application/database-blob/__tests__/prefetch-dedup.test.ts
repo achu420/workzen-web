@@ -18,6 +18,7 @@ import { databaseBlobDiff } from '@/application/services/js-services/http/http_a
 import { deleteOutboxByObjectId, getCurrentOutboxSession } from '@/application/sync-outbox';
 import { applyYDoc } from '@/application/ydoc/apply';
 import { database_blob } from '@/proto/database_blob';
+import { SERVER_INFO_LOADING, updateServerInfo } from '@/utils/server-info';
 
 jest.mock('@/application/db', () => ({
   captureDatabaseStorageFence: jest.fn(async (databaseId: string) => ({
@@ -1474,5 +1475,20 @@ describe('database blob prefetch deduplication', () => {
 
     expect(mockedDeleteCollabDB).not.toHaveBeenCalled();
     expect(localStorage.getItem(`af_database_blob_rid:${databaseId}`)).toBeNull();
+  });
+
+  it('never asks a server that says it has no bulk-row endpoint, and still asks one that does not say', async () => {
+    const serverUrl = 'https://test.appflowy.cloud';
+    const databaseId = 'database-no-blob-endpoint';
+
+    databaseIds.add(databaseId);
+    updateServerInfo(serverUrl, { status: 'available', info: { enable_page_history: true, enable_database_blob_diff: false } });
+    try {
+      await prefetchDatabaseBlobDiff('workspace-no-blob', databaseId);
+      await prefetchDatabaseBlobDiff('workspace-no-blob', databaseId, { forceFullSync: true });
+      expect(mockedDatabaseBlobDiff).not.toHaveBeenCalled();
+    } finally {
+      updateServerInfo(serverUrl, SERVER_INFO_LOADING);
+    }
   });
 });
